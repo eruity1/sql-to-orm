@@ -1,16 +1,20 @@
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import InputSection from "./components/InputSection";
-import { Container, Main } from "./styles/components";
+import { Flex } from "./styles/components";
+import GlobalStyle from "./styles/GlobalStyle";
 
 function App() {
   const [sqlInput, setsqlInput] = useState("");
 
   return (
-    <Container>
-      <Main>
-        <InputSection sqlInput={sqlInput} setSqlInput={setsqlInput} />
-      </Main>
-    </Container>
+    <>
+      <GlobalStyle />
+      <Flex $minHeight="100vh">
+        <Flex $padding={1.5}>
+          <InputSection sqlInput={sqlInput} setSqlInput={setsqlInput} />
+        </Flex>
+      </Flex>
+    </>
   );
 }
 

@@ -1,34 +1,39 @@
 import styled from "styled-components";
+import {
+  width,
+  height,
+  padding,
+  margin,
+  flex,
+  fontSize,
+  fontWeight,
+  gap,
+  textAlign,
+} from "./mixins";
 
-export const Container = styled.div`
-  min-height: 100vh;
+const attrAsRem = (attr) => (attr || attr === 0 ? `${attr}rem` : null);
+
+export const Flex = styled.div`
+  width: 100%;
   display: flex;
-  flex: 1;
-  transition: all 0.3s ease;
+
+  ${width}
+  ${height}
+  ${padding}
+  ${flex}
+  ${fontSize}
+  ${fontWeight}
 `;
 
-export const Main = styled.div`
-  max-width: 80rem;
-  margin: 0 auto;
-  padding: 1.5rem;
-`;
+export const Text = styled.p`
+  color: ${({ $color }) => {
+    if ($color) return $color;
+  }};
 
-export const Section = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-`;
-
-export const SectionHeader = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-`;
-
-export const SectionTitle = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  ${fontSize}
+  ${fontWeight}
+  ${padding}
+  ${margin}
 `;
 
 export const SectionHeading = styled.div`
@@ -44,7 +49,7 @@ export const TextArea = styled.textarea`
   border-radius: 0.5rem;
   border: 1px solid #374151;
   background-color: #1f2937;
-  color: #fffff;
+  color: #ffffff;
   font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
   font-size: 0.875rem;
   resize: none;
@@ -61,28 +66,15 @@ export const TextArea = styled.textarea`
   }
 `;
 
-export const ExamplesSection = styled.div`
-  display: flex;
-  flex-dircetion: column;
-  gap: 0.5rem;
-`;
-
-export const ExamplesLabel = styled.p`
-  font-size: 0.875rem;
-  color: #d1d5db;
-  margin: 0;
-`;
-
 export const Grid = styled.div`
   display: grid;
-  gap: 0.5rem;
+
+  ${gap}
 `;
 
 export const Button = styled.button`
-  padding: 0.25 0.75rem;
+  padding: 0.25rem 0.75rem;
   border-radius: 0.5rem;
-  text-align: eft;
-  font-size: 0.875rem;
   font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
   background-color: #111827;
   color: #d1d5db;
@@ -93,4 +85,7 @@ export const Button = styled.button`
   &:hover {
     background-color: #1f2937;
   }
+
+  ${textAlign}
+  ${fontSize}
 `;
