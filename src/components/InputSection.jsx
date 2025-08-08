@@ -20,6 +20,11 @@ const InputSection = ({ sqlInput, setSqlInput }) => {
           value={sqlInput}
           onChange={(e) => setSqlInput(e.target.value)}
           placeholder="Paste your SQL query here..."
+          $height={19.75}
+          $padding={1}
+          $backgroundColor="#1f2937"
+          $borderRadius={0.5}
+          $fontSize={0.875}
         />
         <Flex $column $gap={0.5}>
           <Text $fontSize={0.875} $color="#d1d5db">
@@ -32,6 +37,10 @@ const InputSection = ({ sqlInput, setSqlInput }) => {
                 onClick={() => setSqlInput(query)}
                 $textAlignLeft
                 $fontSize={0.875}
+                $customPadding="0.25rem 0.75rem"
+                $borderRadius={0.5}
+                $backgroundColor="#1f2937"
+                $hoverBackground="#1e3a8a"
               >
                 {query.length > 80 ? `${query.substring(0, 80)}...` : query}
               </Button>

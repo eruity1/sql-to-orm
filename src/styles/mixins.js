@@ -57,7 +57,10 @@ export const height = css`
 `;
 
 export const padding = css`
-  padding: ${({ $padding }) => attrAsRem($padding)};
+  padding: ${({ $padding, $customPadding }) => {
+    if ($padding) return attrAsRem($padding);
+    if ($customPadding) return $customPadding;
+  }};
   padding-bottom: ${({ $paddingBottom }) => attrAsRem($paddingBottom)};
   padding-top: ${({ $paddingTop }) => attrAsRem($paddingTop)};
   padding-left: ${({ $paddingLeft }) => attrAsRem($paddingLeft)};
@@ -181,5 +184,49 @@ export const textAlign = css`
     if ($textAlignCenter) return "center";
     if ($textAlignLeft) return "left";
     if ($textAlignRight) return "right";
+  }};
+`;
+
+export const borderRadius = css`
+  border-radius: ${({ $borderRadius, $borderRadiusRound }) => {
+    if ($borderRadiusRound) return "100%";
+    if ($borderRadius) return attrAsRem($borderRadius);
+  }};
+`;
+
+export const backgroundColor = css`
+  background-color: ${({ $backgroundColor }) => {
+    if ($backgroundColor) return $backgroundColor;
+  }};
+  &:hover {
+    background-color: ${({ $hoverBackground }) => {
+      if ($hoverBackground) return $hoverBackground;
+    }};
+  }
+`;
+
+export const position = css`
+  position: ${({
+    $position,
+    $positionRelative,
+    $positionAbsolute,
+    $positionFixed,
+  }) => {
+    if ($position) return $position;
+    if ($positionRelative) return "relative";
+    if ($positionAbsolute) return "absolute";
+    if ($positionFixed) return "fixed";
+  }};
+  top: ${({ $top }) => attrAsRem($top)};
+  bottom: ${({ $bottom }) => attrAsRem($bottom)};
+  right: ${({ $right }) => attrAsRem($right)};
+  left: ${({ $left }) => attrAsRem($left)};
+`;
+
+export const overflow = css`
+  overflow-y: ${({ $overflow, $overflowAuto, $overflowHidden }) => {
+    if ($overflow) return $overflow;
+    if ($overflowAuto) return "auto";
+    if ($overflowHidden) return "hidden";
   }};
 `;

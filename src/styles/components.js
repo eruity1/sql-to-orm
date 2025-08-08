@@ -9,9 +9,11 @@ import {
   fontWeight,
   gap,
   textAlign,
+  borderRadius,
+  backgroundColor,
+  position,
+  overflow,
 } from "./mixins";
-
-const attrAsRem = (attr) => (attr || attr === 0 ? `${attr}rem` : null);
 
 export const Flex = styled.div`
   width: 100%;
@@ -23,12 +25,16 @@ export const Flex = styled.div`
   ${flex}
   ${fontSize}
   ${fontWeight}
+  ${borderRadius}
+  ${backgroundColor}
+  ${position}
 `;
 
 export const Text = styled.p`
   color: ${({ $color }) => {
     if ($color) return $color;
   }};
+  font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
 
   ${fontSize}
   ${fontWeight}
@@ -36,22 +42,11 @@ export const Text = styled.p`
   ${margin}
 `;
 
-export const SectionHeading = styled.div`
-  font-size: 1.125rem;
-  font-weight: 600;
-  margin: 0;
-`;
-
 export const TextArea = styled.textarea`
   width: 100%;
-  height: 16rem;
-  padding: 1rem;
-  border-radius: 0.5rem;
   border: 1px solid #374151;
-  background-color: #1f2937;
   color: #ffffff;
   font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
-  font-size: 0.875rem;
   resize: none;
   transition: border-color 0.2s ease;
 
@@ -64,6 +59,12 @@ export const TextArea = styled.textarea`
   &::placeholder {
     color: #9ca3af;
   }
+
+  ${height}
+  ${padding}
+  ${backgroundColor}
+  ${borderRadius}
+  ${fontSize}
 `;
 
 export const Grid = styled.div`
@@ -73,19 +74,34 @@ export const Grid = styled.div`
 `;
 
 export const Button = styled.button`
-  padding: 0.25rem 0.75rem;
-  border-radius: 0.5rem;
   font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
-  background-color: #111827;
   color: #d1d5db;
   border: none;
   cursor: pointer;
   transition: background-color 0.2s ease;
 
-  &:hover {
-    background-color: #1f2937;
-  }
-
   ${textAlign}
   ${fontSize}
+  ${padding}
+  ${borderRadius}
+  ${backgroundColor}
+  ${flex}
+
+  background-color: ${({ $activeBackground }) => {
+    if ($activeBackground) return $activeBackground;
+  }};
+`;
+
+export const Pre = styled.pre`
+  width: 100%;
+  border: 1px solid #374151;
+  font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
+
+  ${height}
+  ${margin}
+  ${padding}
+  ${borderRadius}
+  ${fontSize}
+  ${backgroundColor}
+  ${overflow}
 `;
