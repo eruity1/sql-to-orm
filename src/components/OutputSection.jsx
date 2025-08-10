@@ -3,7 +3,7 @@ import { Flex, Button, Pre } from "../styles/components";
 
 const TABS = [{ id: "activerecord", name: "ActiveRecord", lang: "ruby" }];
 
-const OutputSection = ({ activeTab, setActiveTab }) => {
+const OutputSection = ({ activeTab, setActiveTab, generateOutput }) => {
   return (
     <Flex $column $gap={1}>
       <Flex $alignItemsCenter $gap={0.5}>
@@ -43,7 +43,7 @@ const OutputSection = ({ activeTab, setActiveTab }) => {
           $fontSize={0.875}
           $backgroundColor="#1f2937"
         >
-          <code>HELLO</code>
+          <code>{generateOutput()}</code>
         </Pre>
       </Flex>
     </Flex>

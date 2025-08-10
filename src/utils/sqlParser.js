@@ -28,12 +28,12 @@ const getColumns = (query) => {
 
 const getWhereConditions = (query) => {
   const whereMatch = query.match(
-    /where\s+(.*?)(?:\s+order\s+by|\s+group\s+by|\s+having|\s+limit|$)/i
+    /\bwhere\b\s+(.+?)(?=\b(order\s+by|group\s+by|having|limit)\b|;|$)/i
   );
   return whereMatch ? whereMatch[1].trim() : "";
 };
 
-const parseSQL = (sql) => {
+const sqlParser = (sql) => {
   const trimmedSQL = sql.trim();
   const lowerSQL = trimmedSQL.toLowerCase();
 
@@ -56,4 +56,4 @@ const parseSQL = (sql) => {
   };
 };
 
-export default parseSQL;
+export default sqlParser;
