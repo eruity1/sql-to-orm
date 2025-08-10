@@ -6,7 +6,7 @@ const generateActiveRecord = (parsed) => {
     case "SELECT":
       let query = `${modelName}`;
       if (where) {
-        const whereClause = parseActiveRecordWhere(where);
+        const whereClause = parsedWhere(where);
         query += `${whereClause}`;
       }
 
@@ -31,26 +31,24 @@ const generateActiveRecord = (parsed) => {
         return acc;
       }, "");
       return `${modelName}.create!(${attributes})`;
-    default:
-      return generateBasicActiveRecord(parsed);
-  }
-};
 
-const generateBasicActiveRecord = (parsed) => {
-  const { type, columns, mainTable, where } = parsed;
-  const modelName = mainTable.charAt(0).toUpperCase() + mainTable.slice(1);
-
-  switch (type) {
     case "UPDATE":
-      const whereClause = where
-        ? parseActiveRecordWhere(where)
-        : "# your condition";
-      return `${modelName}${whereClause}.update_all()`;
+      if (!set) {
+        return `${modelName}.update_all()`;
+      }
+      const updateHash = set.reduce((acc, item) => {
+        const key = item.column?.name || item.name;
+        const val = parseValue(item.value);
+        acc += `${acc ? ", " : ""}${key}: ${val}`;
+        return acc;
+      }, "");
+      const whereClause = where ? parsedWhere(where) : "";
+      return `${modelName}${whereClause}.update_all(${updateHash})`;
+
     case "DELETE":
-      const deleteWhere = where
-        ? parseActiveRecordWhere(where)
-        : "# your condition";
+      const deleteWhere = where ? parsedWhere(where) : "";
       return `${modelName}${deleteWhere}.destroy_all`;
+
     default:
       return "# Could not parse this SQL query";
   }
@@ -71,7 +69,7 @@ const parseValue = (val) => {
     : `"${stripped}"`;
 };
 
-const parseActiveRecordWhere = (where) => {
+const parsedWhere = (where) => {
   const operatorRegex = /(=|!=|>=|<=|>|<)/;
 
   if (isSimpleEquality(where, operatorRegex)) {

@@ -1,7 +1,14 @@
 import { Code2 } from "lucide-react";
 import { Button, Flex, Grid, Text, TextArea } from "../styles/components";
 
-const EXAMPLE_QUERIES = ["SELECT * FROM users WHERE age > 18"];
+const EXAMPLE_QUERIES = [
+  "SELECT * FROM users WHERE name = 'Fred'",
+  "SELECT * FROM users WHERE name = 'Fred' AND age = 25",
+  "SELECT * FROM users WHERE age > 18 AND team = 'nuggets' OR team = 'jazz'",
+  "INSERT INTO users (name, age) VALUES ('Bob', 30)",
+  "UPDATE users SET name = 'Bob', age = 31 WHERE id = 1",
+  "DELETE FROM users WHERE id = 1",
+];
 
 const InputSection = ({ sqlInput, setSqlInput }) => {
   return (
