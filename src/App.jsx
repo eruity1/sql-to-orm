@@ -11,6 +11,7 @@ import GlobalStyle from "./styles/GlobalStyle";
 // Helpers
 import sqlParser from "./utils/sqlParser";
 import generateActiveRecord from "./utils/generateActiveRecord";
+import generateSequelize from "./utils/generateSequelize";
 
 function App() {
   const [sqlInput, setsqlInput] = useState("");
@@ -23,6 +24,8 @@ function App() {
     switch (activeTab) {
       case "activerecord":
         return generateActiveRecord(parsedQuery);
+      case "sequelize":
+        return generateSequelize(parsedQuery);
     }
   });
 
