@@ -80,8 +80,8 @@ const parsedWhere = (where) => {
         const match = trimmedCond.match(/(.+?)(=|!=|>=|<=|>|<)(.+)/);
         if (!match) return null;
 
-        const [, field, op, value] = match.map((s) => s.trim());
-        return { field, operator: op, value: parseValue(value) };
+        const [, field, operator, value] = match.map((s) => s.trim());
+        return { field, operator, value: parseValue(value) };
       })
       .filter(Boolean);
 

@@ -1,7 +1,10 @@
 import { Lightbulb } from "lucide-react";
 import { Flex, Button, Pre } from "../styles/components";
 
-const TABS = [{ id: "activerecord", name: "ActiveRecord", lang: "ruby" }];
+const TABS = [
+  { id: "activerecord", name: "ActiveRecord", lang: "ruby" },
+  { id: "sequelize", name: "Sequelize", lang: "javascript" },
+];
 
 const OutputSection = ({ activeTab, setActiveTab, generateOutput }) => {
   return (
@@ -21,6 +24,7 @@ const OutputSection = ({ activeTab, setActiveTab, generateOutput }) => {
         {TABS.map((tab) => (
           <Button
             key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
             $flex={1}
             $customPadding="0.5rem 1rem"
             $borderRadius={0.375}
