@@ -8,7 +8,7 @@ const TABS = [
 
 const OutputSection = ({ activeTab, setActiveTab, generateOutput }) => {
   return (
-    <Flex $column $gap={1}>
+    <Flex $column $gap={1} $marginTop={0.5}>
       <Flex $alignItemsCenter $gap={0.5}>
         <Lightbulb size={20} color="#8b5cf6" />
         <Flex $fontSize={1.125} $boldWeight>

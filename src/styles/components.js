@@ -22,6 +22,7 @@ export const Flex = styled.div`
   ${width}
   ${height}
   ${padding}
+  ${margin}
   ${flex}
   ${fontSize}
   ${fontWeight}
