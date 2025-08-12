@@ -14,8 +14,9 @@ const getTableNames = (query) => {
 const getColumns = (query) => {
   const lowerSQL = query.toLowerCase();
 
-  if (lowerSQL.includes("select *")) return [{ name: "*", table: null }];
-  const selectMatch = lowerSQL.match(/select\s+(.*?)\s+from/i);
+  if (lowerSQL.includes("select *"))
+    return [{ name: "*", table: null, alias: null }];
+  const selectMatch = query.match(/select\s+(.*?)\s+from/i);
 
   if (selectMatch) {
     return selectMatch[1].split(",").map((col) => {
@@ -26,8 +27,9 @@ const getColumns = (query) => {
         const [, columnPart, alias] = asMatch;
         if (columnPart.includes(".")) {
           const [table, column] = columnPart.split(".");
-          return { name: columnPart, table: null, alias };
+          return { name: column, table, alias };
         }
+        return { name: columnPart, table: null, alias };
       }
 
       if (cleaned.includes(".")) {
@@ -59,7 +61,7 @@ const getJoins = (query) => {
   while ((match = joinPattern.exec(query)) !== null) {
     const [, joinType, tableName, alias, onCondition] = match;
     joins.push({
-      type: joinType.trim().toUpperCase(), // might need to default join
+      type: joinType.trim().toUpperCase(),
       table: tableName,
       alias: alias || null,
       on: onCondition.trim(),
@@ -134,9 +136,25 @@ const getSetClause = (query) => {
 
 const getWhereConditions = (query) => {
   const whereMatch = query.match(
-    /\bwhere\b\s+(.+?)(?=\b(order\s+by|group\s+by|having|limit)\b|;|$)/i
+    /\bwhere\b\s+(.+?)(?=\s+\b(order\s+by|group\s+by|having|limit)\b|;|$)/i
   );
   return whereMatch ? whereMatch[1].trim() : "";
+};
+
+const getGroupBy = (query) => {
+  const groupMatch = query.match(
+    /group\s+by\s+(.+?)(?=\s+having|\s+order\s+by|\s+limit|;|$)/i
+  );
+  if (!groupMatch) return null;
+
+  return groupMatch[1].split(",").map((col) => {
+    const cleaned = col.trim().replace(/`/g, "");
+    if (cleaned.includes(".")) {
+      const [table, column] = cleaned.split(".");
+      return { name: column, table };
+    }
+    return { name: cleaned, table: null };
+  });
 };
 
 const getHaving = (query) => {
