@@ -20,11 +20,21 @@ const getColumns = (query) => {
   if (selectMatch) {
     return selectMatch[1].split(",").map((col) => {
       const cleaned = col.trim().replace(/`/g, "");
+
+      const asMatch = cleaned.match(/^(.+?)\s+as\s+([a-zA-Z_][a-zA-Z0-9_]*)$/i);
+      if (asMatch) {
+        const [, columnPart, alias] = asMatch;
+        if (columnPart.includes(".")) {
+          const [table, column] = columnPart.split(".");
+          return { name: columnPart, table: null, alias };
+        }
+      }
+
       if (cleaned.includes(".")) {
         const [table, column] = cleaned.split(".");
-        return { name: column, table };
+        return { name: column, table, alias: null };
       }
-      return { name: cleaned, table: null };
+      return { name: cleaned, table: null, alias: null };
     });
   }
 
@@ -33,6 +43,7 @@ const getColumns = (query) => {
     return insertMatch[1].split(",").map((col) => ({
       name: col.trim().replace(/`/g, ""),
       table: null,
+      alias: null,
     }));
   }
 
@@ -128,6 +139,41 @@ const getWhereConditions = (query) => {
   return whereMatch ? whereMatch[1].trim() : "";
 };
 
+const getHaving = (query) => {
+  const havingMatch = query.match(
+    /having\s+(.+?)(?=\s+order\s+by|\s+limit|;|$)/i
+  );
+  return havingMatch ? havingMatch[1].trim() : null;
+};
+
+const getOrderBy = (query) => {
+  const orderMatch = query.match(/order\s+by\s+(.+?)(?=\s+limit|;|$)/i);
+  if (!orderMatch) return null;
+
+  return orderMatch[1].split(",").map((col) => {
+    const parts = col.trim().replace(/`/g, "").split(/\s+/);
+    const columnPart = parts[0];
+    const direction = parts[1]?.toUpperCase() === "DESC" ? "DESC" : "ASC";
+
+    if (columnPart.includes(".")) {
+      const [table, column] = columnPart.split(".");
+      return { name: column, table, direction };
+    }
+
+    return { name: columnPart, table: null, direction };
+  });
+};
+
+const getLimit = (query) => {
+  const limitMatch = query.match(/limit\s+(\d+)(?:\s+offset\s+(\d+))?/i);
+  if (!limitMatch) return null;
+
+  return {
+    count: parseInt(limitMatch[1]),
+    offset: limitMatch[2] ? parseInt(limitMatch[2]) : null,
+  };
+};
+
 const sqlParser = (sql) => {
   const trimmedSQL = sql.trim();
   const lowerSQL = trimmedSQL.toLowerCase();
@@ -138,6 +184,10 @@ const sqlParser = (sql) => {
   const whereClause = getWhereConditions(trimmedSQL);
   const values = lowerSQL.includes("insert") ? getValues(trimmedSQL) : null;
   const set = lowerSQL.includes("update") ? getSetClause(trimmedSQL) : null;
+  const groupBy = getGroupBy(trimmedSQL);
+  const having = getHaving(trimmedSQL);
+  const orderBy = getOrderBy(trimmedSQL);
+  const limit = getLimit(trimmedSQL);
 
   let queryType = "UNKNOWN";
   if (lowerSQL.startsWith("select")) queryType = "SELECT";
@@ -153,6 +203,10 @@ const sqlParser = (sql) => {
     where: whereClause,
     values,
     set,
+    groupBy,
+    having,
+    orderBy,
+    limit,
     mainTable: tables[0]?.name || "table",
   };
 };
