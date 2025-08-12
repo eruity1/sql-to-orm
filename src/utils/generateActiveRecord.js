@@ -155,7 +155,6 @@ const parsedWhere = (where) => {
     const clauses = [];
 
     if (equals.length) {
-      console.log({ equals });
       const hash = equals.map((e) => `${e.field}: ${e.value}`).join(", ");
       clauses.push(`where(${hash})`);
     }
