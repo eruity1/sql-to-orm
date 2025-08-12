@@ -127,16 +127,11 @@ const parseValue = (val) => {
 };
 
 const parsedWhere = (where) => {
-  const complexOperatorRegex =
-    /(=|!=|>=|<=|>|<|LIKE|NOT LIKE|IN|NOT IN|BETWEEN|IS NULL|IS NOT NULL)/i;
   const simpleOperatorRegex = /(=|!=|>=|<=|>|<)/;
+  const hasComplexOperators =
+    /LIKE|NOT LIKE|IN|NOT IN|BETWEEN|IS NULL|IS NOT NULL/i.test(where);
 
-  if (
-    complexOperatorRegex.test(where) &&
-    !simpleOperatorRegex.test(
-      where.replace(/LIKE|NOT LIKE|IN|NOT IN|BETWEEN|IS NULL|IS NOT NULL/gi, "")
-    )
-  ) {
+  if (hasComplexOperators) {
     return handleComplexWhere(where);
   }
 
@@ -195,7 +190,17 @@ const parsedWhere = (where) => {
   return `.where("${sql}", ${placeholders.join(", ")})`;
 };
 
+const removeClause = (where, clause) => {
+  const escaped = clause.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pattern = new RegExp(
+    `\\s*(AND|OR)?\\s*${escaped}\\s*(AND|OR)?\\s*`,
+    "i"
+  );
+  return where.replace(pattern, " ");
+};
+
 const handleComplexWhere = (where) => {
+  console.log("hello");
   const clauses = [];
   let remainingWhere = where;
 
@@ -206,7 +211,7 @@ const handleComplexWhere = (where) => {
     const [fullMatch, field, not, _, pattern] = match;
     const method = not ? "where.not" : "where";
     clauses.push(`${method}("${field} LIKE ?", "${pattern}")`);
-    remainingWhere = remainingWhere.replace(fullMatch, "");
+    remainingWhere = removeClause(remainingWhere, fullMatch);
   }
 
   const inMatches = [
@@ -259,17 +264,17 @@ const handleComplexWhere = (where) => {
     for (const cond of andConditions) {
       const simpleMatch = cond
         .trim()
-        .match(/(\w+(?:\.\w+)?)\s*(=|!=|>=|<=|>|<)\s*(.+)/);
-      if (simpleMatch) {
-        const [, field, operator, value] = simpleMatch;
-        const parsedVal = parseValue(value.trim());
-        if (operator === "=") {
-          clauses.push(`where(${field}: ${parsedVal})`);
-        } else if (operator === "!=") {
-          clauses.push(`where.not(${field}: ${parsedVal})`);
-        } else {
-          clauses.push(`where("${field} ${operator} ?", ${parsedVal})`);
-        }
+        .match(/^(\w+(?:\.\w+)?)\s*(=|!=|>=|<=|>|<)\s*(.+)$/);
+      if (!simpleMatch) continue;
+
+      const [, field, operator, value] = simpleMatch;
+      const parsedVal = parseValue(value.trim());
+      if (operator === "=") {
+        clauses.push(`where(${field}: ${parsedVal})`);
+      } else if (operator === "!=") {
+        clauses.push(`where.not(${field}: ${parsedVal})`);
+      } else {
+        clauses.push(`where("${field} ${operator} ?", ${parsedVal})`);
       }
     }
   }
