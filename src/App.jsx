@@ -33,7 +33,7 @@ function App() {
     <>
       <GlobalStyle />
       <Flex $minHeight="100vh">
-        <Flex $maxWidth={80} $padding={1.5} $gap={0.75}>
+        <Flex $maxWidth={80} $padding={1.5} $gap={0.75} $column>
           <InputSection sqlInput={sqlInput} setSqlInput={setsqlInput} />
           <OutputSection
             activeTab={activeTab}

@@ -21,7 +21,7 @@ const InputSection = ({ sqlInput, setSqlInput }) => {
           </Flex>
         </Flex>
       </Flex>
-      <div>
+      <Flex $column $gap={0.5}>
         <TextArea
           name="SQL Input"
           value={sqlInput}
@@ -54,7 +54,7 @@ const InputSection = ({ sqlInput, setSqlInput }) => {
             ))}
           </Grid>
         </Flex>
-      </div>
+      </Flex>
     </Flex>
   );
 };

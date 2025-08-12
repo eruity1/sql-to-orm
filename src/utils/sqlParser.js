@@ -39,6 +39,25 @@ const getColumns = (query) => {
   return [];
 };
 
+const getJoins = (query) => {
+  const joins = [];
+  const joinPattern =
+    /((?:inner\s+|left\s+|right\s+|full\s+)?join)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s+(?:as\s+([a-zA-Z_][a-zA-Z0-9_]*)\s+)?on\s+(.+?)(?=\s+(?:inner\s+|left\s+|right\s+|full\s+)?join|\s+where|\s+group\s+by|\s+order\s+by|\s+having|\s+limit|;|$)/gi;
+
+  let match;
+  while ((match = joinPattern.exec(query)) !== null) {
+    const [, joinType, tableName, alias, onCondition] = match;
+    joins.push({
+      type: joinType.trim().toUpperCase(), // might need to default join
+      table: tableName,
+      alias: alias || null,
+      on: onCondition.trim(),
+    });
+  }
+
+  return joins;
+};
+
 const getValues = (query) => {
   const valuesMatch = query.match(/values\s*\((.*?)\)/i);
   if (!valuesMatch) return null;
@@ -115,6 +134,7 @@ const sqlParser = (sql) => {
 
   const tables = getTableNames(trimmedSQL);
   const columns = getColumns(trimmedSQL);
+  const joins = getJoins(trimmedSQL);
   const whereClause = getWhereConditions(trimmedSQL);
   const values = lowerSQL.includes("insert") ? getValues(trimmedSQL) : null;
   const set = lowerSQL.includes("update") ? getSetClause(trimmedSQL) : null;
@@ -129,6 +149,7 @@ const sqlParser = (sql) => {
     type: queryType,
     tables,
     columns,
+    joins,
     where: whereClause,
     values,
     set,
