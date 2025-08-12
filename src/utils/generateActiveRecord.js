@@ -1,6 +1,19 @@
+import { singularize } from "inflection";
+
 const generateActiveRecord = (parsed) => {
-  const { type, columns, where, mainTable, values, set } = parsed;
-  const modelName = mainTable.charAt(0).toUpperCase() + mainTable.slice(1);
+  const {
+    type,
+    columns,
+    where,
+    mainTable,
+    values,
+    set,
+    groupBy,
+    having,
+    orderBy,
+    limit,
+  } = parsed;
+  const modelName = toModelName(mainTable);
 
   switch (type) {
     case "SELECT":
@@ -10,10 +23,41 @@ const generateActiveRecord = (parsed) => {
         query += `${whereClause}`;
       }
 
+      if (groupBy && groupBy.length > 0) {
+        const groupCols = groupBy.map((col) => `:${col.name}`).join(", ");
+        query += `.group(${groupCols})`;
+      }
+
+      if (having) {
+        query += `.having("${having}")`;
+      }
+
+      if (orderBy && orderBy.length > 0) {
+        const orderCols = orderBy.map((col) => {
+          return `${col.name}: :${col.direction.toLowerCase()}`;
+        });
+        query += `.order(${orderCols.join(", ")})`;
+      }
+
+      if (limit) {
+        if (limit.offset) {
+          query += `.limit(${limit.count}).offset(${limit.offset})`;
+        } else {
+          query += `.limit(${limit.count})`;
+        }
+      }
+
       if (columns[0]?.name !== "*") {
         const selectCols = columns
-          .filter((col) => !col.table || col.table === mainTable)
-          .map((col) => `:${col.name}`)
+          .map((col) => {
+            if (col.alias) {
+              return `"${col.name} AS ${col.alias}"`;
+            }
+            if (col.table && col.table !== mainTable) {
+              return `"${col.table}.${col.name}"`;
+            }
+            return `:${col.name}`;
+          })
           .join(", ");
         if (selectCols) query += `.select(${selectCols})`;
       }
@@ -54,9 +98,17 @@ const generateActiveRecord = (parsed) => {
   }
 };
 
-const isSimpleEquality = (expresssion, regex) =>
-  !/or/i.test(expresssion) &&
-  expresssion
+function toModelName(tableName) {
+  const singular = singularize(tableName);
+  return singular
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join("");
+}
+
+const isSimpleEquality = (expression, regex) =>
+  !/or/i.test(expression) &&
+  expression
     .replace(/\([^]+\)/g, "")
     .split(/AND/i)
     .every((str) => regex.test(str.trim()));
@@ -64,15 +116,31 @@ const isSimpleEquality = (expresssion, regex) =>
 const parseValue = (val) => {
   if (!val) return "";
   const stripped = val.replace(/^['"]|['"]$/g, "");
+
+  if (stripped.toLowerCase() === "null") {
+    return "nil";
+  }
+
   return /^-?(?:\d+\.?\d*|\.\d+)$/.test(stripped)
     ? Number(stripped)
     : `"${stripped}"`;
 };
 
 const parsedWhere = (where) => {
-  const operatorRegex = /(=|!=|>=|<=|>|<)/;
+  const complexOperatorRegex =
+    /(=|!=|>=|<=|>|<|LIKE|NOT LIKE|IN|NOT IN|BETWEEN|IS NULL|IS NOT NULL)/i;
+  const simpleOperatorRegex = /(=|!=|>=|<=|>|<)/;
 
-  if (isSimpleEquality(where, operatorRegex)) {
+  if (
+    complexOperatorRegex.test(where) &&
+    !simpleOperatorRegex.test(
+      where.replace(/LIKE|NOT LIKE|IN|NOT IN|BETWEEN|IS NULL|IS NOT NULL/gi, "")
+    )
+  ) {
+    return handleComplexWhere(where);
+  }
+
+  if (isSimpleEquality(where, simpleOperatorRegex)) {
     const parts = where
       .split("AND")
       .map((cond) => {
@@ -125,6 +193,88 @@ const parsedWhere = (where) => {
   }
 
   return `.where("${sql}", ${placeholders.join(", ")})`;
+};
+
+const handleComplexWhere = (where) => {
+  const clauses = [];
+  let remainingWhere = where;
+
+  const likeMatches = [
+    ...where.matchAll(/(\w+(?:\.\w+)?)\s+(NOT\s+)?LIKE\s+(['"])(.*?)\3/gi),
+  ];
+  for (const match of likeMatches) {
+    const [fullMatch, field, not, _, pattern] = match;
+    const method = not ? "where.not" : "where";
+    clauses.push(`${method}("${field} LIKE ?", "${pattern}")`);
+    remainingWhere = remainingWhere.replace(fullMatch, "");
+  }
+
+  const inMatches = [
+    ...where.matchAll(/(\w+(?:\.\w+)?)\s+(NOT\s+)?IN\s*\(([^)]+)\)/gi),
+  ];
+  for (const match of inMatches) {
+    const [fullMatch, field, not, valuesList] = match;
+    const values = valuesList
+      .split(",")
+      .map((v) => parseValue(v.trim()))
+      .join(", ");
+    const method = not ? "where.not" : "where";
+    clauses.push(`${method}(${field}: [${values}])`);
+    remainingWhere = remainingWhere.replace(fullMatch, "");
+  }
+
+  const betweenMatches = [
+    ...where.matchAll(
+      /(\w+(?:\.\w+)?)\s+(NOT\s+)?BETWEEN\s+(.+?)\s+AND\s+(.+?)(?=\s+(?:AND|OR)|$)/gi
+    ),
+  ];
+  for (const match of betweenMatches) {
+    const [fullMatch, field, not, start, end] = match;
+    const startVal = parseValue(start.trim());
+    const endVal = parseValue(end.trim());
+    if (not) {
+      clauses.push(`where.not(${field}: ${startVal}..${endVal})`);
+    } else {
+      clauses.push(`where(${field}: ${startVal}..${endVal})`);
+    }
+    remainingWhere = remainingWhere.replace(fullMatch, "");
+  }
+
+  const nullMatches = [
+    ...where.matchAll(/(\w+(?:\.\w+)?)\s+IS\s+(NOT\s+)?NULL/gi),
+  ];
+  for (const match of nullMatches) {
+    const [fullMatch, field, not] = match;
+    if (not) {
+      clauses.push(`where.not(${field}: nil)`);
+    } else {
+      clauses.push(`where(${field}: nil)`);
+    }
+    remainingWhere = remainingWhere.replace(fullMatch, "");
+  }
+
+  const remaining = remainingWhere.trim().replace(/^\s*(AND|OR)\s*/i, "");
+  if (remaining) {
+    const andConditions = remaining.split(/\s+AND\s+/i);
+    for (const cond of andConditions) {
+      const simpleMatch = cond
+        .trim()
+        .match(/(\w+(?:\.\w+)?)\s*(=|!=|>=|<=|>|<)\s*(.+)/);
+      if (simpleMatch) {
+        const [, field, operator, value] = simpleMatch;
+        const parsedVal = parseValue(value.trim());
+        if (operator === "=") {
+          clauses.push(`where(${field}: ${parsedVal})`);
+        } else if (operator === "!=") {
+          clauses.push(`where.not(${field}: ${parsedVal})`);
+        } else {
+          clauses.push(`where("${field} ${operator} ?", ${parsedVal})`);
+        }
+      }
+    }
+  }
+
+  return clauses.length > 0 ? "." + clauses.join(".") : "";
 };
 
 export default generateActiveRecord;
