@@ -121,9 +121,18 @@ const parseValue = (val) => {
     return "nil";
   }
 
-  return /^-?(?:\d+\.?\d*|\.\d+)$/.test(stripped)
-    ? Number(stripped)
-    : `"${stripped}"`;
+  if (stripped.toLowerCase() === "true") {
+    return true;
+  }
+  if (stripped.toLowerCase() === "false") {
+    return false;
+  }
+
+  if (/^-?(?:\d+\.?\d*|\.\d+)$/.test(stripped)) {
+    return Number(stripped);
+  }
+
+  return `"${stripped}"`;
 };
 
 const parsedWhere = (where) => {
@@ -200,7 +209,6 @@ const removeClause = (where, clause) => {
 };
 
 const handleComplexWhere = (where) => {
-  console.log("hello");
   const clauses = [];
   let remainingWhere = where;
 

@@ -1,5 +1,5 @@
-import sqlParser from "../../utils/sqlParser";
-import generateActiveRecord from "../../utils/generateActiveRecord";
+import sqlParser from "../../../utils/sqlParser";
+import generateActiveRecord from "../../../utils/activeRecord/generateActiveRecord";
 
 describe("generateActiveRecord", () => {
   test("generates simple SELECT", () => {

@@ -1,12 +1,25 @@
+import { SQL_PATTERNS } from "../constants";
+
 const getTableNames = (query) => {
   const tables = [];
-  const fromMatch = query.match(/from\s+([a-zA-Z_][a-zA-Z0-9_]*)/i);
-  const intoMatch = query.match(/into\s+([a-zA-Z_][a-zA-Z0-9_]*)/i);
-  const updateMatch = query.match(/update\s+([a-zA-Z_][a-zA-Z0-9_]*)/i);
 
-  const mainTable = fromMatch?.[1] || intoMatch?.[1] || updateMatch?.[1];
+  const fromMatch = query.match(SQL_PATTERNS.TABLE_FROM);
+  const intoMatch = query.match(SQL_PATTERNS.TABLE_INTO);
+  const updateMatch = query.match(SQL_PATTERNS.TABLE_UPDATE);
 
-  if (mainTable) tables.push({ name: mainTable, type: "main" });
+  if (fromMatch) {
+    const mainTable = fromMatch[1];
+    const alias = fromMatch[2];
+    tables.push({
+      name: mainTable,
+      type: "main",
+      alias: alias || null,
+    });
+  } else if (intoMatch) {
+    tables.push({ name: intoMatch[1], type: "main", alias: null });
+  } else if (updateMatch) {
+    tables.push({ name: updateMatch[1], type: "main", alias: null });
+  }
 
   return tables;
 };
@@ -16,13 +29,13 @@ const getColumns = (query) => {
 
   if (lowerSQL.includes("select *"))
     return [{ name: "*", table: null, alias: null }];
-  const selectMatch = query.match(/select\s+(.*?)\s+from/i);
 
+  const selectMatch = query.match(SQL_PATTERNS.SELECT_COLUMNS);
   if (selectMatch) {
     return selectMatch[1].split(",").map((col) => {
       const cleaned = col.trim().replace(/`/g, "");
 
-      const asMatch = cleaned.match(/^(.+?)\s+as\s+([a-zA-Z_][a-zA-Z0-9_]*)$/i);
+      const asMatch = cleaned.match(SQL_PATTERNS.COLUMN_AS);
       if (asMatch) {
         const [, columnPart, alias] = asMatch;
         if (columnPart.includes(".")) {
@@ -40,7 +53,7 @@ const getColumns = (query) => {
     });
   }
 
-  const insertMatch = query.match(/insert\s+into\s+\w+\s*\((.*?)\)\s*values/i);
+  const insertMatch = query.match(SQL_PATTERNS.INSERT_COLUMNS);
   if (insertMatch) {
     return insertMatch[1].split(",").map((col) => ({
       name: col.trim().replace(/`/g, ""),
@@ -54,11 +67,9 @@ const getColumns = (query) => {
 
 const getJoins = (query) => {
   const joins = [];
-  const joinPattern =
-    /((?:inner\s+|left\s+|right\s+|full\s+)?join)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s+(?:as\s+([a-zA-Z_][a-zA-Z0-9_]*)\s+)?on\s+(.+?)(?=\s+(?:inner\s+|left\s+|right\s+|full\s+)?join|\s+where|\s+group\s+by|\s+order\s+by|\s+having|\s+limit|;|$)/gi;
-
   let match;
-  while ((match = joinPattern.exec(query)) !== null) {
+
+  while ((match = SQL_PATTERNS.JOIN_PATTERN.exec(query)) !== null) {
     const [, joinType, tableName, alias, onCondition] = match;
     joins.push({
       type: joinType.trim().toUpperCase(),
@@ -72,7 +83,7 @@ const getJoins = (query) => {
 };
 
 const getValues = (query) => {
-  const valuesMatch = query.match(/values\s*\((.*?)\)/i);
+  const valuesMatch = query.match(SQL_PATTERNS.VALUES_CLAUSE);
   if (!valuesMatch) return null;
 
   const values = [];
@@ -101,7 +112,7 @@ const getValues = (query) => {
 };
 
 const getSetClause = (query) => {
-  const setMatch = query.match(/set\s+(.+?)(?=\s+where|;|$)/i);
+  const setMatch = query.match(SQL_PATTERNS.SET_CLAUSE);
   if (!setMatch) return null;
 
   const pairs = [];
@@ -135,16 +146,12 @@ const getSetClause = (query) => {
 };
 
 const getWhereConditions = (query) => {
-  const whereMatch = query.match(
-    /\bwhere\b\s+(.+?)(?=\s+\b(order\s+by|group\s+by|having|limit)\b|;|$)/i
-  );
+  const whereMatch = query.match(SQL_PATTERNS.WHERE_CLAUSE);
   return whereMatch ? whereMatch[1].trim() : "";
 };
 
 const getGroupBy = (query) => {
-  const groupMatch = query.match(
-    /group\s+by\s+(.+?)(?=\s+having|\s+order\s+by|\s+limit|;|$)/i
-  );
+  const groupMatch = query.match(SQL_PATTERNS.GROUP_BY_CLAUSE);
   if (!groupMatch) return null;
 
   return groupMatch[1].split(",").map((col) => {
@@ -158,14 +165,12 @@ const getGroupBy = (query) => {
 };
 
 const getHaving = (query) => {
-  const havingMatch = query.match(
-    /having\s+(.+?)(?=\s+order\s+by|\s+limit|;|$)/i
-  );
+  const havingMatch = query.match(SQL_PATTERNS.HAVING_CLAUSE);
   return havingMatch ? havingMatch[1].trim() : null;
 };
 
 const getOrderBy = (query) => {
-  const orderMatch = query.match(/order\s+by\s+(.+?)(?=\s+limit|;|$)/i);
+  const orderMatch = query.match(SQL_PATTERNS.ORDER_BY_CLAUSE);
   if (!orderMatch) return null;
 
   return orderMatch[1].split(",").map((col) => {
@@ -183,7 +188,7 @@ const getOrderBy = (query) => {
 };
 
 const getLimit = (query) => {
-  const limitMatch = query.match(/limit\s+(\d+)(?:\s+offset\s+(\d+))?/i);
+  const limitMatch = query.match(SQL_PATTERNS.LIMIT_CLAUSE);
   if (!limitMatch) return null;
 
   return {

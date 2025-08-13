@@ -6,7 +6,7 @@ describe("sqlParser", () => {
     const result = sqlParser(sql);
     expect(result).toEqual({
       type: "SELECT",
-      tables: [{ name: "users", type: "main" }],
+      tables: [{ name: "users", type: "main", alias: null }],
       columns: [
         { name: "id", table: null, alias: null },
         { name: "name", table: null, alias: null },
@@ -43,24 +43,6 @@ describe("sqlParser", () => {
     ]);
     expect(result.where).toBe("posts.created_at > '2023-01-01'");
   });
-
-  // test("parses SELECT with JOIN and alias", () => {
-  //   const sql =
-  //     "SELECT u.name, p.title FROM users u LEFT JOIN posts p ON u.id = p.user_id";
-  //   const result = sqlParser(sql);
-  //   expect(result.joins).toEqual([
-  //     {
-  //       type: "LEFT JOIN",
-  //       table: "posts",
-  //       alias: "p",
-  //       on: "u.id = p.user_id",
-  //     },
-  //   ]);
-  //   expect(result.columns).toEqual([
-  //     { name: "name", table: "u", alias: null },
-  //     { name: "title", table: "p", alias: null },
-  //   ]);
-  // });
 
   test("parses INSERT", () => {
     const sql =

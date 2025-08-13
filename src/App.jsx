@@ -10,7 +10,8 @@ import GlobalStyle from "./styles/GlobalStyle";
 
 // Helpers
 import sqlParser from "./utils/sqlParser";
-import generateActiveRecord from "./utils/generateActiveRecord";
+import generateActiveRecord from "./utils/activeRecord/generateActiveRecord";
+import generateActiveRecordWithJoins from "./utils/activeRecord/generateActiveRecordJoins";
 import generateSequelize from "./utils/generateSequelize";
 
 function App() {
@@ -23,7 +24,11 @@ function App() {
     const parsedQuery = sqlParser(sqlInput);
     switch (activeTab) {
       case "activerecord":
-        return generateActiveRecord(parsedQuery);
+        if (parsedQuery.joins && parsedQuery.joins.length > 0) {
+          return generateActiveRecordWithJoins(parsedQuery);
+        } else {
+          return generateActiveRecord(parsedQuery);
+        }
       case "sequelize":
         return generateSequelize(parsedQuery);
     }
