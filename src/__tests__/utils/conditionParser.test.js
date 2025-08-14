@@ -8,8 +8,9 @@ jest.mock("../../constants", () => ({
   SQL_PATTERNS: {
     SIMPLE_OPERATORS: /(=|!=|>=|<=|>|<)/,
     SIMPLE_PATTERN: /^(\w+(?:\.\w+)?)\s*(=|!=|>=|<=|>|<)\s*(.+)$/,
-    LIKE_PATTERN: /(\w+(?:\.\w+)?)\s+(NOT\s+)?LIKE\s+(['"])(.*?)\3/gi,
-    IN_PATTERN: /(\w+(?:\.\w+)?)\s+(NOT\s+)?IN\s*\(([^)]+)\)/gi,
+    LIKE_PATTERN: /(\w+(?:\.\w+)?)\s+(NOT\s+)?(I?LIKE)\s+(['"])(.*?)\4/gi,
+    IN_PATTERN:
+      /(\w+(?:\.\w+)?)\s+(NOT\s+)?IN\s*\(([^)]*(?:SELECT[^)]*)?[^)]*)\)/gi,
     BETWEEN_PATTERN:
       /(\w+(?:\.\w+)?)\s+(NOT\s+)?BETWEEN\s+(.+?)\s+AND\s+(.+?)(?=\s+(?:AND|OR)|$)/gi,
     NULL_PATTERN: /(\w+(?:\.\w+)?)\s+IS\s+(NOT\s+)?NULL/gi,

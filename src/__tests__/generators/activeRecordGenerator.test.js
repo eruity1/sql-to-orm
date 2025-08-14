@@ -12,7 +12,8 @@ jest.mock("../../utils/valueParser");
 jest.mock("../../utils/stringHelpers");
 jest.mock("../../constants", () => ({
   SQL_PATTERNS: {
-    COMPLEX_OPERATORS: /LIKE|NOT LIKE|IN|NOT IN|BETWEEN|IS NULL|IS NOT NULL/i,
+    COMPLEX_OPERATORS:
+      /LIKE|NOT LIKE|ILIKE|NOT ILIKE|IN|NOT IN|BETWEEN|IS NULL|IS NOT NULL/i,
     WHERE_PATTERN: /(.+?)(=|!=|>=|<=|>|<)(.+?)(\s+(?:AND|OR)\s+|$)/gi,
   },
 }));

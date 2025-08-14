@@ -10,7 +10,8 @@ jest.mock("../../utils/valueParser");
 jest.mock("../../utils/conditionParser");
 jest.mock("../../constants", () => ({
   SQL_PATTERNS: {
-    COMPLEX_OPERATORS: /LIKE|NOT LIKE|IN|NOT IN|BETWEEN|IS NULL|IS NOT NULL/i,
+    COMPLEX_OPERATORS:
+      /LIKE|NOT LIKE|ILIKE|NOT ILIKE|IN|NOT IN|BETWEEN|IS NULL|IS NOT NULL/i,
     SIMPLE_OPERATORS: /(=|!=|>=|<=|>|<)/,
     SIMPLE_ASSOCIATION_JOIN: /^(\w+)\.(\w+)\s*=\s*(\w+)\.(\w+)$/,
   },

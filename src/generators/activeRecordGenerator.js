@@ -25,6 +25,14 @@ export class ActiveRecordGenerator extends BaseGenerator {
 
     let query = modelName;
 
+    const isSelectAll = columns.length === 1 && columns[0]?.name === "*";
+    const hasNoConditions =
+      !where &&
+      (!groupBy || groupBy.length === 0) &&
+      !having &&
+      (!orderBy || orderBy.length === 0) &&
+      !limit;
+
     if (where) {
       query += this.buildWhere(where);
     }
@@ -47,6 +55,8 @@ export class ActiveRecordGenerator extends BaseGenerator {
 
     if (columns[0]?.name !== "*") {
       query += this.buildSelect(columns, mainTable);
+    } else if (isSelectAll && hasNoConditions) {
+      query += ".all";
     }
 
     return query;
@@ -108,6 +118,10 @@ export class ActiveRecordGenerator extends BaseGenerator {
   }
 
   buildWhere(where) {
+    if (this.hasSubquery(where)) {
+      return this.buildSubqueryWhere(where);
+    }
+
     const hasComplexOperators = SQL_PATTERNS.COMPLEX_OPERATORS.test(where);
 
     if (hasComplexOperators) {
@@ -121,13 +135,23 @@ export class ActiveRecordGenerator extends BaseGenerator {
     return this.buildRawWhere(where);
   }
 
+  hasSubquery(where) {
+    const parenMatches = where.match(/\([^)]*SELECT[^)]*\)/gi);
+    return parenMatches && parenMatches.length > 0;
+  }
+
+  buildSubqueryWhere(where) {
+    return `.where("${where}")`;
+  }
+
   buildComplexWhere(where) {
     const conditions = ConditionParser.parseComplexConditions(where);
     const clauses = [];
 
-    conditions.like.forEach(({ field, not, pattern }) => {
+    conditions.like.forEach(({ field, not, pattern, isILike }) => {
       const method = not ? "where.not" : "where";
-      clauses.push(`${method}("${field} LIKE ?", "${pattern}")`);
+      const operator = isILike ? "ILIKE" : "LIKE";
+      clauses.push(`${method}("${field} ${operator} ?", "${pattern}")`);
     });
 
     conditions.in.forEach(({ field, not, values }) => {
@@ -224,6 +248,28 @@ export class ActiveRecordGenerator extends BaseGenerator {
   buildSelect(columns, mainTable) {
     const selectCols = columns
       .map((col) => {
+        const aggMatch = col.name.match(
+          SQL_PATTERNS.AGGREGATE_FUNCTION_PATTERN
+        );
+        if (aggMatch) {
+          const [, func, distinct, column] = aggMatch;
+          const cleanColumn = column.trim();
+
+          if (cleanColumn === "*" && func.toUpperCase() === "COUNT") {
+            return distinct ? "COUNT(DISTINCT *)" : "COUNT(*)";
+          }
+
+          let columnRef = cleanColumn;
+          if (cleanColumn.includes(".")) {
+            columnRef = `"${cleanColumn}"`;
+          } else if (cleanColumn !== "*") {
+            columnRef = `:${cleanColumn}`;
+          }
+
+          const distinctPart = distinct ? "DISTINCT " : "";
+          return `"${func.toUpperCase()}(${distinctPart}${columnRef})"`;
+        }
+
         if (col.alias) {
           return `"${col.name} AS ${col.alias}"`;
         }
