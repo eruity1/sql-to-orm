@@ -23,6 +23,19 @@ export class ActiveRecordGenerator extends BaseGenerator {
 
     const modelName = StringHelpers.toModelName(mainTable);
 
+    const simpleAggregateResult = this.handleSimpleAggregates(
+      columns,
+      where,
+      groupBy,
+      having,
+      orderBy,
+      limit,
+      modelName
+    );
+    if (simpleAggregateResult) {
+      return simpleAggregateResult;
+    }
+
     let query = modelName;
 
     const isSelectAll = columns.length === 1 && columns[0]?.name === "*";
@@ -60,6 +73,92 @@ export class ActiveRecordGenerator extends BaseGenerator {
     }
 
     return query;
+  }
+
+  handleSimpleAggregates(
+    columns,
+    where,
+    groupBy,
+    having,
+    orderBy,
+    limit,
+    modelName
+  ) {
+    if (columns.length !== 1 || groupBy?.length > 0 || having) {
+      return null;
+    }
+
+    const column = columns[0];
+    const aggMatch = column.name.match(SQL_PATTERNS.AGGREGATE_FUNCTION_PATTERN);
+
+    if (!aggMatch) {
+      return null;
+    }
+
+    const [, func, distinct, columnName] = aggMatch;
+    const funcUpper = func.toUpperCase();
+    const cleanColumn = columnName.trim();
+
+    let query = modelName;
+
+    if (where) {
+      query += this.buildWhere(where);
+    }
+
+    if (orderBy && orderBy.length > 0) {
+      query += this.buildOrderBy(orderBy);
+    }
+
+    if (limit) {
+      query += this.buildLimit(limit);
+    }
+
+    switch (funcUpper) {
+      case "COUNT":
+        if (cleanColumn === "*") {
+          return query + ".count";
+        } else if (distinct) {
+          const columnSymbol = cleanColumn.includes(".")
+            ? `"${cleanColumn}"`
+            : `:${cleanColumn}`;
+          return query + `.distinct.count(${columnSymbol})`;
+        } else {
+          const columnSymbol = cleanColumn.includes(".")
+            ? `"${cleanColumn}"`
+            : `:${cleanColumn}`;
+          return query + `.count(${columnSymbol})`;
+        }
+
+      case "SUM":
+        const sumColumn = cleanColumn.includes(".")
+          ? `"${cleanColumn}"`
+          : `:${cleanColumn}`;
+        return (
+          query +
+          (distinct ? `.distinct.sum(${sumColumn})` : `.sum(${sumColumn})`)
+        );
+
+      case "AVG":
+        const avgColumn = cleanColumn.includes(".")
+          ? `"${cleanColumn}"`
+          : `:${cleanColumn}`;
+        return query + `.average(${avgColumn})`;
+
+      case "MIN":
+        const minColumn = cleanColumn.includes(".")
+          ? `"${cleanColumn}"`
+          : `:${cleanColumn}`;
+        return query + `.minimum(${minColumn})`;
+
+      case "MAX":
+        const maxColumn = cleanColumn.includes(".")
+          ? `"${cleanColumn}"`
+          : `:${cleanColumn}`;
+        return query + `.maximum(${maxColumn})`;
+
+      default:
+        return null;
+    }
   }
 
   generateInsert(parsed) {
@@ -136,8 +235,7 @@ export class ActiveRecordGenerator extends BaseGenerator {
   }
 
   hasSubquery(where) {
-    const parenMatches = where.match(/\([^)]*SELECT[^)]*\)/gi);
-    return parenMatches && parenMatches.length > 0;
+    return SQL_PATTERNS.SUBQUERY_PATTERN.test(where);
   }
 
   buildSubqueryWhere(where) {
@@ -256,14 +354,14 @@ export class ActiveRecordGenerator extends BaseGenerator {
           const cleanColumn = column.trim();
 
           if (cleanColumn === "*" && func.toUpperCase() === "COUNT") {
-            return distinct ? "COUNT(DISTINCT *)" : "COUNT(*)";
+            return distinct ? '"COUNT(DISTINCT *)"' : '"COUNT(*)"';
           }
 
           let columnRef = cleanColumn;
           if (cleanColumn.includes(".")) {
-            columnRef = `"${cleanColumn}"`;
+            columnRef = cleanColumn;
           } else if (cleanColumn !== "*") {
-            columnRef = `:${cleanColumn}`;
+            columnRef = cleanColumn;
           }
 
           const distinctPart = distinct ? "DISTINCT " : "";
