@@ -12,8 +12,12 @@ jest.mock("../../utils/valueParser");
 jest.mock("../../utils/stringHelpers");
 jest.mock("../../constants", () => ({
   SQL_PATTERNS: {
-    COMPLEX_OPERATORS: /LIKE|NOT LIKE|IN|NOT IN|BETWEEN|IS NULL|IS NOT NULL/i,
+    COMPLEX_OPERATORS:
+      /LIKE|NOT LIKE|ILIKE|NOT ILIKE|IN|NOT IN|BETWEEN|IS NULL|IS NOT NULL/i,
     WHERE_PATTERN: /(.+?)(=|!=|>=|<=|>|<)(.+?)(\s+(?:AND|OR)\s+|$)/gi,
+    AGGREGATE_FUNCTION_PATTERN:
+      /\b(COUNT|SUM|AVG|MIN|MAX)\s*\(\s*(DISTINCT\s+)?([^)]+)\s*\)/i,
+    SUBQUERY_PATTERN: /\([^)]*SELECT[^)]*\)/gi,
   },
 }));
 
@@ -62,11 +66,11 @@ describe("ActiveRecordGenerator", () => {
     });
     ConditionParser.parseComplexConditions.mockImplementation((where) => ({
       like:
-        where.match(/(\w+)\s+(NOT\s+)?LIKE\s+(['"]).*?\3/gi)?.map((m) => {
-          const [, field, not, , pattern] = m.match(
-            /(\w+)\s+(NOT\s+)?LIKE\s+(['"])(.*?)\3/i
+        where.match(/(\w+)\s+(NOT\s+)?(I?LIKE)\s+(['"]).*?\4/gi)?.map((m) => {
+          const [, field, not, likeOp, , pattern] = m.match(
+            /(\w+)\s+(NOT\s+)?(I?LIKE)\s+(['"])(.*?)\4/i
           );
-          return { field, not: !!not, pattern };
+          return { field, not: !!not, pattern, isILike: likeOp === "ILIKE" };
         }) || [],
       in:
         where.match(/(\w+)\s+(NOT\s+)?IN\s*\([^)]+\)/gi)?.map((m) => {
@@ -138,7 +142,7 @@ describe("ActiveRecordGenerator", () => {
   });
 
   describe("generateSelect", () => {
-    test("generates basic SELECT query", () => {
+    test("generates basic SELECT query with .all for SELECT * with no conditions", () => {
       const parsed = {
         type: "SELECT",
         mainTable: "users",
@@ -153,7 +157,7 @@ describe("ActiveRecordGenerator", () => {
 
       const result = generator.generateSelect(parsed);
 
-      expect(result).toBe("Users");
+      expect(result).toBe("Users.all");
     });
 
     test("generates SELECT with WHERE, GROUP BY, HAVING, ORDER BY, and LIMIT", () => {
@@ -187,7 +191,7 @@ describe("ActiveRecordGenerator", () => {
         mainTable: "users",
         columns: [
           { name: "name", table: "users" },
-          { name: "email", table: "users" },
+          { name: "email", table: "users", alias: "user_email" },
         ],
         joins: [],
         where: "",
@@ -199,7 +203,221 @@ describe("ActiveRecordGenerator", () => {
 
       const result = generator.generateSelect(parsed);
 
-      expect(result).toBe("Users.select(:name, :email)");
+      expect(result).toBe('Users.select(:name, "email AS user_email")');
+    });
+
+    test("generates SELECT with aggregate function", () => {
+      const parsed = {
+        type: "SELECT",
+        mainTable: "users",
+        columns: [{ name: "COUNT(*)" }],
+        joins: [],
+        where: "age > 18",
+        groupBy: [],
+        having: "",
+        orderBy: [],
+        limit: null,
+      };
+
+      ConditionParser.parseSimpleConditions.mockReturnValue([
+        { field: "age", operator: ">", value: 18 },
+      ]);
+
+      const result = generator.generateSelect(parsed);
+
+      expect(result).toBe('Users.where("age > ?", 18).count');
+    });
+
+    test("generates SELECT with DISTINCT aggregate", () => {
+      const parsed = {
+        type: "SELECT",
+        mainTable: "users",
+        columns: [{ name: "COUNT(DISTINCT users.id)" }],
+        joins: [],
+        where: "",
+        groupBy: [],
+        having: "",
+        orderBy: [],
+        limit: null,
+      };
+
+      const result = generator.generateSelect(parsed);
+
+      expect(result).toBe('Users.distinct.count("users.id")');
+    });
+
+    test("returns null for aggregate with GROUP BY", () => {
+      const parsed = {
+        type: "SELECT",
+        mainTable: "users",
+        columns: [{ name: "COUNT(*)" }],
+        joins: [],
+        where: "",
+        groupBy: [{ name: "status" }],
+        having: "",
+        orderBy: [],
+        limit: null,
+      };
+
+      const result = generator.generateSelect(parsed);
+
+      expect(result).toBe('Users.group(:status).select("COUNT(*)")');
+    });
+  });
+
+  describe("handleSimpleAggregates", () => {
+    test("handles COUNT(*)", () => {
+      const parsed = {
+        columns: [{ name: "COUNT(*)" }],
+        where: "age > 18",
+        groupBy: [],
+        having: "",
+        orderBy: [],
+        limit: null,
+        mainTable: "users",
+      };
+
+      ConditionParser.parseSimpleConditions.mockReturnValue([
+        { field: "age", operator: ">", value: 18 },
+      ]);
+
+      const result = generator.handleSimpleAggregates(
+        parsed.columns,
+        parsed.where,
+        parsed.groupBy,
+        parsed.having,
+        parsed.orderBy,
+        parsed.limit,
+        "Users"
+      );
+
+      expect(result).toBe('Users.where("age > ?", 18).count');
+    });
+
+    test("handles COUNT(DISTINCT column)", () => {
+      const result = generator.handleSimpleAggregates(
+        [{ name: "COUNT(DISTINCT id)" }],
+        "",
+        [],
+        "",
+        [],
+        null,
+        "Users"
+      );
+
+      expect(result).toBe("Users.distinct.count(:id)");
+    });
+
+    test("handles SUM(column)", () => {
+      const result = generator.handleSimpleAggregates(
+        [{ name: "SUM(salary)" }],
+        "",
+        [],
+        "",
+        [],
+        null,
+        "Users"
+      );
+
+      expect(result).toBe("Users.sum(:salary)");
+    });
+
+    test("handles AVG(column)", () => {
+      const result = generator.handleSimpleAggregates(
+        [{ name: "AVG(salary)" }],
+        "",
+        [],
+        "",
+        [],
+        null,
+        "Users"
+      );
+
+      expect(result).toBe("Users.average(:salary)");
+    });
+
+    test("handles MIN(column)", () => {
+      const result = generator.handleSimpleAggregates(
+        [{ name: "MIN(age)" }],
+        "",
+        [],
+        "",
+        [],
+        null,
+        "Users"
+      );
+
+      expect(result).toBe("Users.minimum(:age)");
+    });
+
+    test("handles MAX(column)", () => {
+      const result = generator.handleSimpleAggregates(
+        [{ name: "MAX(age)" }],
+        "",
+        [],
+        "",
+        [],
+        null,
+        "Users"
+      );
+
+      expect(result).toBe("Users.maximum(:age)");
+    });
+
+    test("returns null for multiple columns", () => {
+      const result = generator.handleSimpleAggregates(
+        [{ name: "COUNT(*)" }, { name: "SUM(salary)" }],
+        "",
+        [],
+        "",
+        [],
+        null,
+        "Users"
+      );
+
+      expect(result).toBeNull();
+    });
+
+    test("returns null for GROUP BY", () => {
+      const result = generator.handleSimpleAggregates(
+        [{ name: "COUNT(*)" }],
+        "",
+        [{ name: "status" }],
+        "",
+        [],
+        null,
+        "Users"
+      );
+
+      expect(result).toBeNull();
+    });
+
+    test("returns null for HAVING", () => {
+      const result = generator.handleSimpleAggregates(
+        [{ name: "COUNT(*)" }],
+        "",
+        [],
+        "COUNT(*) > 10",
+        [],
+        null,
+        "Users"
+      );
+
+      expect(result).toBeNull();
+    });
+
+    test("returns null for non-aggregate column", () => {
+      const result = generator.handleSimpleAggregates(
+        [{ name: "name" }],
+        "",
+        [],
+        "",
+        [],
+        null,
+        "Users"
+      );
+
+      expect(result).toBeNull();
     });
   });
 
@@ -321,6 +539,31 @@ describe("ActiveRecordGenerator", () => {
     });
   });
 
+  describe("hasSubquery", () => {
+    test("returns true for subquery", () => {
+      const where = "id IN (SELECT user_id FROM posts)";
+      const result = generator.hasSubquery(where);
+
+      expect(result).toBe(true);
+    });
+
+    test("returns false for no subquery", () => {
+      const where = "age = 25";
+      const result = generator.hasSubquery(where);
+
+      expect(result).toBe(false);
+    });
+  });
+
+  describe("buildSubqueryWhere", () => {
+    test("builds WHERE clause with subquery", () => {
+      const where = "id IN (SELECT user_id FROM posts)";
+      const result = generator.buildSubqueryWhere(where);
+
+      expect(result).toBe('.where("id IN (SELECT user_id FROM posts)")');
+    });
+  });
+
   describe("buildWhere", () => {
     test("builds simple WHERE clause", () => {
       const where = 'age = 25 AND status = "active"';
@@ -335,11 +578,11 @@ describe("ActiveRecordGenerator", () => {
       expect(result).toBe('.where(age: 25, status: "active")');
     });
 
-    test("builds complex WHERE clause with LIKE", () => {
-      const where = 'name LIKE "%John%"';
+    test("builds complex WHERE clause with ILIKE", () => {
+      const where = 'name ILIKE "%John%"';
       ConditionParser.isSimpleEquality.mockReturnValue(false);
       ConditionParser.parseComplexConditions.mockReturnValue({
-        like: [{ field: "name", not: false, pattern: "%John%" }],
+        like: [{ field: "name", not: false, pattern: "%John%", isILike: true }],
         in: [],
         between: [],
         null: [],
@@ -348,15 +591,15 @@ describe("ActiveRecordGenerator", () => {
 
       const result = generator.buildWhere(where);
 
-      expect(result).toBe('.where("name LIKE ?", "%John%")');
+      expect(result).toBe('.where("name ILIKE ?", "%John%")');
     });
 
     test("builds complex WHERE clause with mixed conditions", () => {
       const where =
-        'name LIKE "%John%" AND age = 25 AND salary BETWEEN 50000 AND 100000';
+        'name ILIKE "%John%" AND age = 25 AND salary BETWEEN 50000 AND 100000';
       ConditionParser.isSimpleEquality.mockReturnValue(false);
       ConditionParser.parseComplexConditions.mockReturnValue({
-        like: [{ field: "name", not: false, pattern: "%John%" }],
+        like: [{ field: "name", not: false, pattern: "%John%", isILike: true }],
         in: [],
         between: [{ field: "salary", not: false, start: 50000, end: 100000 }],
         null: [],
@@ -366,8 +609,15 @@ describe("ActiveRecordGenerator", () => {
       const result = generator.buildWhere(where);
 
       expect(result).toBe(
-        '.where("name LIKE ?", "%John%").where(salary: 50000..100000).where(age: 25)'
+        '.where("name ILIKE ?", "%John%").where(salary: 50000..100000).where(age: 25)'
       );
+    });
+
+    test("builds subquery WHERE clause", () => {
+      const where = "id IN (SELECT user_id FROM posts)";
+      const result = generator.buildWhere(where);
+
+      expect(result).toBe('.where("id IN (SELECT user_id FROM posts)")');
     });
 
     test("builds raw WHERE clause for unsupported operators", () => {
@@ -392,7 +642,9 @@ describe("ActiveRecordGenerator", () => {
       const where =
         'name LIKE "%John%" AND status IN ("active", "pending") AND age BETWEEN 18 AND 30 AND deleted_at IS NULL';
       ConditionParser.parseComplexConditions.mockReturnValue({
-        like: [{ field: "name", not: false, pattern: "%John%" }],
+        like: [
+          { field: "name", not: false, pattern: "%John%", isILike: false },
+        ],
         in: [
           { field: "status", not: false, values: ['"active"', '"pending"'] },
         ],
@@ -522,6 +774,24 @@ describe("ActiveRecordGenerator", () => {
   });
 
   describe("buildSelect", () => {
+    test("builds SELECT with aggregate function", () => {
+      const columns = [{ name: "COUNT(*)" }];
+      const mainTable = "users";
+
+      const result = generator.buildSelect(columns, mainTable);
+
+      expect(result).toBe('.select("COUNT(*)")');
+    });
+
+    test("builds SELECT with DISTINCT aggregate", () => {
+      const columns = [{ name: "COUNT(DISTINCT users.id)" }];
+      const mainTable = "users";
+
+      const result = generator.buildSelect(columns, mainTable);
+
+      expect(result).toBe('.select("COUNT(DISTINCT users.id)")');
+    });
+
     test("handles single column", () => {
       const columns = [{ name: "name", table: "users" }];
       const mainTable = "users";

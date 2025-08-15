@@ -4,16 +4,28 @@ import { ValueParser } from "./valueParser";
 
 export class ConditionParser {
   static isSimpleEquality(expression, regex = SQL_PATTERNS.SIMPLE_OPERATORS) {
+    if (this.hasSubquery(expression)) {
+      return false;
+    }
+
     return (
       !/or/i.test(expression) &&
       expression
-        .replace(/\([^]+\)/g, "")
+        .replace(/\([^)]*\)/g, "")
         .split(/AND/i)
         .every((str) => regex.test(str.trim()))
     );
   }
 
+  static hasSubquery(expression) {
+    return SQL_PATTERNS.SUBQUERY_PATTERN.test(expression);
+  }
+
   static parseSimpleConditions(where) {
+    if (this.hasSubquery(where)) {
+      return [];
+    }
+
     return where
       .split(/\s+AND\s+/i)
       .map((cond) => {
@@ -42,14 +54,25 @@ export class ConditionParser {
 
     let remainingWhere = where;
 
-    for (const match of where.matchAll(SQL_PATTERNS.LIKE_PATTERN)) {
+    for (const match of where.matchAll(SQL_PATTERNS.ILIKE_PATTERN)) {
       const [fullMatch, field, not, _, pattern] = match;
-      conditions.like.push({ field, not: !!not, pattern });
+      conditions.like.push({ field, not: !!not, pattern, isILike: true });
+      remainingWhere = StringHelpers.removeClause(remainingWhere, fullMatch);
+    }
+
+    for (const match of remainingWhere.matchAll(SQL_PATTERNS.LIKE_PATTERN)) {
+      const [fullMatch, field, not, _, pattern] = match;
+      conditions.like.push({ field, not: !!not, pattern, isILike: false });
       remainingWhere = StringHelpers.removeClause(remainingWhere, fullMatch);
     }
 
     for (const match of where.matchAll(SQL_PATTERNS.IN_PATTERN)) {
       const [fullMatch, field, not, valuesList] = match;
+
+      if (/SELECT/i.test(valuesList)) {
+        continue;
+      }
+
       const values = valuesList
         .split(",")
         .map((v) => ValueParser.parse(v.trim()));
@@ -75,10 +98,26 @@ export class ConditionParser {
     }
 
     const remaining = remainingWhere.trim().replace(/^\s*(AND|OR)\s*/i, "");
-    if (remaining) {
+    if (remaining && !this.hasSubquery(remaining)) {
       conditions.simple = this.parseSimpleConditions(remaining);
     }
 
     return conditions;
+  }
+
+  static extractSubqueries(where) {
+    const subqueries = [];
+
+    for (const match of where.matchAll(SQL_PATTERNS.IN_PATTERN_WITH_SUBQUERY)) {
+      const [fullMatch, field, not, subquery] = match;
+      subqueries.push({
+        field,
+        not: !!not,
+        subquery: subquery.trim(),
+        fullMatch,
+      });
+    }
+
+    return subqueries;
   }
 }

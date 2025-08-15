@@ -23,7 +23,28 @@ export class ActiveRecordGenerator extends BaseGenerator {
 
     const modelName = StringHelpers.toModelName(mainTable);
 
+    const simpleAggregateResult = this.handleSimpleAggregates(
+      columns,
+      where,
+      groupBy,
+      having,
+      orderBy,
+      limit,
+      modelName
+    );
+    if (simpleAggregateResult) {
+      return simpleAggregateResult;
+    }
+
     let query = modelName;
+
+    const isSelectAll = columns.length === 1 && columns[0]?.name === "*";
+    const hasNoConditions =
+      !where &&
+      (!groupBy || groupBy.length === 0) &&
+      !having &&
+      (!orderBy || orderBy.length === 0) &&
+      !limit;
 
     if (where) {
       query += this.buildWhere(where);
@@ -47,9 +68,97 @@ export class ActiveRecordGenerator extends BaseGenerator {
 
     if (columns[0]?.name !== "*") {
       query += this.buildSelect(columns, mainTable);
+    } else if (isSelectAll && hasNoConditions) {
+      query += ".all";
     }
 
     return query;
+  }
+
+  handleSimpleAggregates(
+    columns,
+    where,
+    groupBy,
+    having,
+    orderBy,
+    limit,
+    modelName
+  ) {
+    if (columns.length !== 1 || groupBy?.length > 0 || having) {
+      return null;
+    }
+
+    const column = columns[0];
+    const aggMatch = column.name.match(SQL_PATTERNS.AGGREGATE_FUNCTION_PATTERN);
+
+    if (!aggMatch) {
+      return null;
+    }
+
+    const [, func, distinct, columnName] = aggMatch;
+    const funcUpper = func.toUpperCase();
+    const cleanColumn = columnName.trim();
+
+    let query = modelName;
+
+    if (where) {
+      query += this.buildWhere(where);
+    }
+
+    if (orderBy && orderBy.length > 0) {
+      query += this.buildOrderBy(orderBy);
+    }
+
+    if (limit) {
+      query += this.buildLimit(limit);
+    }
+
+    switch (funcUpper) {
+      case "COUNT":
+        if (cleanColumn === "*") {
+          return query + ".count";
+        } else if (distinct) {
+          const columnSymbol = cleanColumn.includes(".")
+            ? `"${cleanColumn}"`
+            : `:${cleanColumn}`;
+          return query + `.distinct.count(${columnSymbol})`;
+        } else {
+          const columnSymbol = cleanColumn.includes(".")
+            ? `"${cleanColumn}"`
+            : `:${cleanColumn}`;
+          return query + `.count(${columnSymbol})`;
+        }
+
+      case "SUM":
+        const sumColumn = cleanColumn.includes(".")
+          ? `"${cleanColumn}"`
+          : `:${cleanColumn}`;
+        return (
+          query +
+          (distinct ? `.distinct.sum(${sumColumn})` : `.sum(${sumColumn})`)
+        );
+
+      case "AVG":
+        const avgColumn = cleanColumn.includes(".")
+          ? `"${cleanColumn}"`
+          : `:${cleanColumn}`;
+        return query + `.average(${avgColumn})`;
+
+      case "MIN":
+        const minColumn = cleanColumn.includes(".")
+          ? `"${cleanColumn}"`
+          : `:${cleanColumn}`;
+        return query + `.minimum(${minColumn})`;
+
+      case "MAX":
+        const maxColumn = cleanColumn.includes(".")
+          ? `"${cleanColumn}"`
+          : `:${cleanColumn}`;
+        return query + `.maximum(${maxColumn})`;
+
+      default:
+        return null;
+    }
   }
 
   generateInsert(parsed) {
@@ -108,6 +217,10 @@ export class ActiveRecordGenerator extends BaseGenerator {
   }
 
   buildWhere(where) {
+    if (this.hasSubquery(where)) {
+      return this.buildSubqueryWhere(where);
+    }
+
     const hasComplexOperators = SQL_PATTERNS.COMPLEX_OPERATORS.test(where);
 
     if (hasComplexOperators) {
@@ -121,13 +234,22 @@ export class ActiveRecordGenerator extends BaseGenerator {
     return this.buildRawWhere(where);
   }
 
+  hasSubquery(where) {
+    return SQL_PATTERNS.SUBQUERY_PATTERN.test(where);
+  }
+
+  buildSubqueryWhere(where) {
+    return `.where("${where}")`;
+  }
+
   buildComplexWhere(where) {
     const conditions = ConditionParser.parseComplexConditions(where);
     const clauses = [];
 
-    conditions.like.forEach(({ field, not, pattern }) => {
+    conditions.like.forEach(({ field, not, pattern, isILike }) => {
       const method = not ? "where.not" : "where";
-      clauses.push(`${method}("${field} LIKE ?", "${pattern}")`);
+      const operator = isILike ? "ILIKE" : "LIKE";
+      clauses.push(`${method}("${field} ${operator} ?", "${pattern}")`);
     });
 
     conditions.in.forEach(({ field, not, values }) => {
@@ -224,6 +346,28 @@ export class ActiveRecordGenerator extends BaseGenerator {
   buildSelect(columns, mainTable) {
     const selectCols = columns
       .map((col) => {
+        const aggMatch = col.name.match(
+          SQL_PATTERNS.AGGREGATE_FUNCTION_PATTERN
+        );
+        if (aggMatch) {
+          const [, func, distinct, column] = aggMatch;
+          const cleanColumn = column.trim();
+
+          if (cleanColumn === "*" && func.toUpperCase() === "COUNT") {
+            return distinct ? '"COUNT(DISTINCT *)"' : '"COUNT(*)"';
+          }
+
+          let columnRef = cleanColumn;
+          if (cleanColumn.includes(".")) {
+            columnRef = cleanColumn;
+          } else if (cleanColumn !== "*") {
+            columnRef = cleanColumn;
+          }
+
+          const distinctPart = distinct ? "DISTINCT " : "";
+          return `"${func.toUpperCase()}(${distinctPart}${columnRef})"`;
+        }
+
         if (col.alias) {
           return `"${col.name} AS ${col.alias}"`;
         }

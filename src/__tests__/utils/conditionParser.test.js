@@ -9,10 +9,15 @@ jest.mock("../../constants", () => ({
     SIMPLE_OPERATORS: /(=|!=|>=|<=|>|<)/,
     SIMPLE_PATTERN: /^(\w+(?:\.\w+)?)\s*(=|!=|>=|<=|>|<)\s*(.+)$/,
     LIKE_PATTERN: /(\w+(?:\.\w+)?)\s+(NOT\s+)?LIKE\s+(['"])(.*?)\3/gi,
-    IN_PATTERN: /(\w+(?:\.\w+)?)\s+(NOT\s+)?IN\s*\(([^)]+)\)/gi,
+    ILIKE_PATTERN: /(\w+(?:\.\w+)?)\s+(NOT\s+)?ILIKE\s+(['"])(.*?)\3/gi,
+    IN_PATTERN:
+      /(\w+(?:\.\w+)?)\s+(NOT\s+)?IN\s*\(([^)]*(?:SELECT[^)]*)?[^)]*)\)/gi,
+    IN_PATTERN_WITH_SUBQUERY:
+      /(\w+(?:\.\w+)?)\s+(NOT\s+)?IN\s*\(([^)]*SELECT[^)]*)\)/gi,
     BETWEEN_PATTERN:
       /(\w+(?:\.\w+)?)\s+(NOT\s+)?BETWEEN\s+(.+?)\s+AND\s+(.+?)(?=\s+(?:AND|OR)|$)/gi,
     NULL_PATTERN: /(\w+(?:\.\w+)?)\s+IS\s+(NOT\s+)?NULL/gi,
+    SUBQUERY_PATTERN: /\([^)]*SELECT[^)]*\)/gi,
   },
 }));
 
@@ -28,12 +33,33 @@ describe("ConditionParser", () => {
       return `"${value.replace(/^['"]|['"]$/g, "")}"`;
     });
 
+    // Mock StringHelpers.removeClause
     StringHelpers.removeClause.mockImplementation((where, clause) => {
       const pattern = new RegExp(
         `\\s*(AND|OR)?\\s*${clause.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*(AND|OR)?\\s*`,
         "i"
       );
       return where.replace(pattern, " ").trim();
+    });
+  });
+
+  describe("hasSubquery", () => {
+    test("returns true for expression with subquery", () => {
+      const expression = "id IN (SELECT user_id FROM posts)";
+      const result = ConditionParser.hasSubquery(expression);
+      expect(result).toBe(true);
+    });
+
+    test("returns false for expression without subquery", () => {
+      const expression = 'age = 25 AND status = "active"';
+      const result = ConditionParser.hasSubquery(expression);
+      expect(result).toBe(false);
+    });
+
+    test("returns false for empty expression", () => {
+      const expression = "";
+      const result = ConditionParser.hasSubquery(expression);
+      expect(result).toBe(false);
     });
   });
 
@@ -62,10 +88,22 @@ describe("ConditionParser", () => {
       expect(result).toBe(false);
     });
 
+    test("returns false for subquery", () => {
+      const expression = "id IN (SELECT user_id FROM posts)";
+      const result = ConditionParser.isSimpleEquality(expression);
+      expect(result).toBe(false);
+    });
+
     test("returns true for single condition", () => {
       const expression = "id = 1";
       const result = ConditionParser.isSimpleEquality(expression);
       expect(result).toBe(true);
+    });
+
+    test("returns false for empty expression", () => {
+      const expression = "";
+      const result = ConditionParser.isSimpleEquality(expression);
+      expect(result).toBe(false);
     });
   });
 
@@ -109,6 +147,13 @@ describe("ConditionParser", () => {
       expect(result).toEqual([{ field: "id", operator: "=", value: 1 }]);
     });
 
+    test("returns empty array for subquery", () => {
+      const where = "id IN (SELECT user_id FROM posts)";
+      const result = ConditionParser.parseSimpleConditions(where);
+
+      expect(result).toEqual([]);
+    });
+
     test("returns empty array for empty input", () => {
       const where = "";
       const result = ConditionParser.parseSimpleConditions(where);
@@ -123,7 +168,9 @@ describe("ConditionParser", () => {
       const result = ConditionParser.parseComplexConditions(where);
 
       expect(result).toEqual({
-        like: [{ field: "name", not: false, pattern: "%John%" }],
+        like: [
+          { field: "name", not: false, pattern: "%John%", isILike: false },
+        ],
         in: [],
         between: [],
         null: [],
@@ -136,20 +183,42 @@ describe("ConditionParser", () => {
       expect(ValueParser.parse).toHaveBeenCalledWith("25");
     });
 
-    test("parses NOT LIKE condition", () => {
-      const where = 'email NOT LIKE "%.com"';
+    test("parses ILIKE condition", () => {
+      const where = 'name ILIKE "%John%" AND age = 25';
       const result = ConditionParser.parseComplexConditions(where);
 
       expect(result).toEqual({
-        like: [{ field: "email", not: true, pattern: "%.com" }],
+        like: [{ field: "name", not: false, pattern: "%John%", isILike: true }],
+        in: [],
+        between: [],
+        null: [],
+        simple: [{ field: "age", operator: "=", value: 25 }],
+      });
+      expect(StringHelpers.removeClause).toHaveBeenCalledWith(
+        where,
+        'name ILIKE "%John%"'
+      );
+      expect(ValueParser.parse).toHaveBeenCalledWith("25");
+    });
+
+    test("parses NOT ILIKE condition", () => {
+      const where = 'email NOT ILIKE "%.com"';
+      const result = ConditionParser.parseComplexConditions(where);
+
+      expect(result).toEqual({
+        like: [{ field: "email", not: true, pattern: "%.com", isILike: true }],
         in: [],
         between: [],
         null: [],
         simple: [],
       });
+      expect(StringHelpers.removeClause).toHaveBeenCalledWith(
+        where,
+        'email NOT ILIKE "%.com"'
+      );
     });
 
-    test("parses IN condition", () => {
+    test("parses IN condition without subquery", () => {
       const where = 'status IN ("active", "pending")';
       const result = ConditionParser.parseComplexConditions(where);
 
@@ -207,13 +276,13 @@ describe("ConditionParser", () => {
       });
     });
 
-    test("parses mixed conditions", () => {
+    test("parses mixed conditions with ILIKE and simple", () => {
       const where =
-        'name LIKE "%John%" AND age BETWEEN 18 AND 30 AND status = "active"';
+        'name ILIKE "%John%" AND age BETWEEN 18 AND 30 AND status = "active"';
       const result = ConditionParser.parseComplexConditions(where);
 
       expect(result).toEqual({
-        like: [{ field: "name", not: false, pattern: "%John%" }],
+        like: [{ field: "name", not: false, pattern: "%John%", isILike: true }],
         in: [],
         between: [{ field: "age", not: false, start: 18, end: 30 }],
         null: [],
@@ -221,7 +290,7 @@ describe("ConditionParser", () => {
       });
       expect(StringHelpers.removeClause).toHaveBeenCalledWith(
         expect.any(String),
-        'name LIKE "%John%"'
+        'name ILIKE "%John%"'
       );
       expect(ValueParser.parse).toHaveBeenCalledWith("18");
       expect(ValueParser.parse).toHaveBeenCalledWith("30");
@@ -255,6 +324,71 @@ describe("ConditionParser", () => {
           { field: "status", operator: "=", value: '"active"' },
         ],
       });
+    });
+  });
+
+  describe("extractSubqueries", () => {
+    test("extracts IN subquery", () => {
+      const where = "id IN (SELECT user_id FROM posts WHERE published = true)";
+      const result = ConditionParser.extractSubqueries(where);
+
+      expect(result).toEqual([
+        {
+          field: "id",
+          not: false,
+          subquery: "SELECT user_id FROM posts WHERE published = true",
+          fullMatch: "id IN (SELECT user_id FROM posts WHERE published = true)",
+        },
+      ]);
+    });
+
+    test("extracts NOT IN subquery", () => {
+      const where = "id NOT IN (SELECT user_id FROM posts)";
+      const result = ConditionParser.extractSubqueries(where);
+
+      expect(result).toEqual([
+        {
+          field: "id",
+          not: true,
+          subquery: "SELECT user_id FROM posts",
+          fullMatch: "id NOT IN (SELECT user_id FROM posts)",
+        },
+      ]);
+    });
+
+    test("extracts multiple subqueries", () => {
+      const where =
+        "id IN (SELECT user_id FROM posts) AND dept_id IN (SELECT dept_id FROM departments)";
+      const result = ConditionParser.extractSubqueries(where);
+
+      expect(result).toEqual([
+        {
+          field: "id",
+          not: false,
+          subquery: "SELECT user_id FROM posts",
+          fullMatch: "id IN (SELECT user_id FROM posts)",
+        },
+        {
+          field: "dept_id",
+          not: false,
+          subquery: "SELECT dept_id FROM departments",
+          fullMatch: "dept_id IN (SELECT dept_id FROM departments)",
+        },
+      ]);
+    });
+
+    test("returns empty array for no subqueries", () => {
+      const where = 'age = 25 AND status = "active"';
+      const result = ConditionParser.extractSubqueries(where);
+
+      expect(result).toEqual([]);
+    });
+
+    test("returns empty array for empty input", () => {
+      const where = "";
+      const result = ConditionParser.extractSubqueries(where);
+
+      expect(result).toEqual([]);
     });
   });
 });

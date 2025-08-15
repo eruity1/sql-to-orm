@@ -67,12 +67,14 @@ const getColumns = (query) => {
 
 const getJoins = (query) => {
   const joins = [];
-  let match;
 
+  SQL_PATTERNS.JOIN_PATTERN.lastIndex = 0;
+
+  let match;
   while ((match = SQL_PATTERNS.JOIN_PATTERN.exec(query)) !== null) {
     const [, joinType, tableName, alias, onCondition] = match;
     joins.push({
-      type: joinType.trim().toUpperCase(),
+      type: joinType.trim(),
       table: tableName,
       alias: alias || null,
       on: onCondition.trim(),
