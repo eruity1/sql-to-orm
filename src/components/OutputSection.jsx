@@ -1,9 +1,19 @@
-import { Lightbulb } from "lucide-react";
+import { useState } from "react";
+
+import { Lightbulb, Copy, Check } from "lucide-react";
 import { Flex, Button, Pre } from "../styles/components";
 
 import { TABS } from "../constants";
 
 const OutputSection = ({ activeTab, setActiveTab, generateOutput }) => {
+  const [copied, setCopied] = useState(false);
+
+  const copyToClipboard = async (text) => {
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <Flex $column $gap={1} $marginTop={0.5}>
       <Flex $alignItemsCenter $gap={0.5}>
@@ -35,7 +45,7 @@ const OutputSection = ({ activeTab, setActiveTab, generateOutput }) => {
           </Button>
         ))}
       </Flex>
-      <Flex $postitionRelative>
+      <div style={{ position: "relative" }}>
         <Pre
           $height={16}
           $padding={1}
@@ -46,7 +56,26 @@ const OutputSection = ({ activeTab, setActiveTab, generateOutput }) => {
         >
           <code>{generateOutput()}</code>
         </Pre>
-      </Flex>
+        <Button
+          onClick={() => copyToClipboard(generateOutput())}
+          title="Copy to clipboard"
+          $positionAbsolute
+          $top={0.75}
+          $right={0.75}
+          $padding={0.5}
+          $borderRadius={0.375}
+          $backgroundColor="#f3f4f6"
+          $alignItemsCenter
+          $justifyCenter
+          $hoverBackground="#e5e7eb"
+        >
+          {copied ? (
+            <Check strokeWidth={3} size={16} color="#34d399" />
+          ) : (
+            <Copy strokeWidth={3} size={16} color="#9ca3af" />
+          )}
+        </Button>
+      </div>
     </Flex>
   );
 };
