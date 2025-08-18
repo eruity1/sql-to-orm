@@ -10,9 +10,9 @@ import GlobalStyle from "./styles/GlobalStyle";
 
 // Helpers
 import sqlParser from "./utils/sqlParser";
-import generateSequelize from "./utils/generateSequelize";
 import { ORM_MAPPINGS } from "./constants";
 import { ActiveRecordGenerator } from "./generators/activeRecordGenerator";
+import { SequelizeGenerator } from "./generators/sequelizeGenerator";
 
 function App() {
   const [sqlInput, setsqlInput] = useState("");
@@ -27,7 +27,8 @@ function App() {
         const activeRecordGenerator = new ActiveRecordGenerator();
         return activeRecordGenerator.generateQuery(parsedQuery);
       case ORM_MAPPINGS.SEQUELIZE:
-        return generateSequelize(parsedQuery);
+        const sequelizeGenerator = new SequelizeGenerator();
+        return sequelizeGenerator.generateQuery(parsedQuery);
     }
   });
 

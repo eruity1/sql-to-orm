@@ -47,7 +47,7 @@ export const SQL_PATTERNS = {
   SUBQUERY_PATTERN: /\([^)]*SELECT[^)]*\)/gi,
 
   AGGREGATE_FUNCTION_PATTERN:
-    /\b(COUNT|SUM|AVG|MIN|MAX)\s*\(\s*(DISTINCT\s+)?([^)]+)\s*\)/i,
+    /^(COUNT|SUM|AVG|MIN|MAX)\s*\(\s*(DISTINCT\s+)?([^)]+)\s*\)$/i,
 };
 
 export const QUERY_TYPES = {
