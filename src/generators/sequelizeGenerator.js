@@ -1,6 +1,5 @@
 import { BaseGenerator } from "./baseGenerator";
 import { SequelizeJoinGenerator } from "./sequelizeJoinGenerator";
-
 import { ConditionParser } from "../utils/conditionParser";
 import { StringHelpers } from "../utils/stringHelpers";
 import { SQL_PATTERNS } from "../constants";

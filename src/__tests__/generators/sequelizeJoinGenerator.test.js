@@ -1,8 +1,6 @@
 import { SequelizeJoinGenerator } from "../../generators/sequelizeJoinGenerator";
-import { BaseGenerator } from "../../generators/baseGenerator";
 import { StringHelpers } from "../../utils/stringHelpers";
 import { ConditionParser } from "../../utils/conditionParser";
-import { SQL_PATTERNS } from "../../constants";
 
 jest.mock("../../generators/baseGenerator");
 jest.mock("../../utils/stringHelpers");
