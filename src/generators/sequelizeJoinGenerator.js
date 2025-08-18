@@ -73,10 +73,6 @@ export class SequelizeJoinGenerator extends BaseGenerator {
       options.push(this.buildLimit(limit));
     }
 
-    if (this.needsRawQuery(joins)) {
-      options.push(`raw: false`, `subQuery: false`);
-    }
-
     return `${modelName}.findAll({${options.join(", ")}})`;
   }
 
@@ -359,7 +355,7 @@ export class SequelizeJoinGenerator extends BaseGenerator {
       return `{ [Op.and]: [Sequelize.literal("${where}")] }`;
     }
 
-    if (where.toLowerCase().includes(" or ")) {
+    if (/\s+OR\s+/i.test(where)) {
       return this.buildOrConditions(where);
     }
 
@@ -484,7 +480,9 @@ export class SequelizeJoinGenerator extends BaseGenerator {
   }
 
   parseCondition(condition) {
-    const match = condition.match(/(.+?)(=|!=|>=|<=|>|<)(.+)/);
+    const match = condition.match(
+      /(.+?)(=|!=|>=|<=|>|<)(.+?)(?=\s+(?:AND|OR)|$)/i
+    );
     if (!match) return null;
 
     const [, field, operator, value] = match.map((s) => s.trim());
@@ -677,5 +675,16 @@ export class SequelizeJoinGenerator extends BaseGenerator {
     }
 
     return { joinCondition, whereCondition };
+  }
+
+  getSequelizeOperator(operator) {
+    const opMap = {
+      "!=": "Op.ne",
+      ">=": "Op.gte",
+      "<=": "Op.lte",
+      ">": "Op.gt",
+      "<": "Op.lt",
+    };
+    return opMap[operator] || "Op.eq";
   }
 }

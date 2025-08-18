@@ -84,6 +84,7 @@ export class SequelizeGenerator extends BaseGenerator {
     }
 
     const column = columns[0];
+    // FIXED: The column.name might be "COUNT(*)" directly, so we need to match that
     const aggMatch = column.name.match(SQL_PATTERNS.AGGREGATE_FUNCTION_PATTERN);
 
     if (!aggMatch) {
@@ -133,8 +134,6 @@ export class SequelizeGenerator extends BaseGenerator {
         }
 
       case "SUM":
-        const sumOptions = [...options, `col: "${cleanColumn}"`];
-        if (distinct) sumOptions.push(`distinct: true`);
         return `${baseQuery}.sum("${cleanColumn}"${options.length > 0 ? `, ${optionsStr}` : ""})`;
 
       case "AVG":
@@ -199,6 +198,10 @@ export class SequelizeGenerator extends BaseGenerator {
   buildWhere(where) {
     if (this.hasSubquery(where)) {
       return this.buildSubqueryWhere(where);
+    }
+
+    if (/\s+OR\s+/i.test(where)) {
+      return this.buildOrConditions(where);
     }
 
     const hasComplexOperators = SQL_PATTERNS.COMPLEX_OPERATORS.test(where);
@@ -299,23 +302,27 @@ export class SequelizeGenerator extends BaseGenerator {
       const andClauses = [];
 
       for (const cond of andConditions) {
-        const match = cond.match(/(.+?)(=|!=|>=|<=|>|<)(.+)/);
+        const match = cond.match(
+          /(.+?)(=|!=|>=|<=|>|<)(.+?)(?=\s+(?:AND|OR)|$)/i
+        );
         if (!match) continue;
 
         const [, field, operator, value] = match.map((s) => s.trim());
         const parsedValue = this.parseSequelizeValue(value);
         if (operator === "=") {
-          andClauses.push(`{ ${field}: ${parsedValue} }`);
+          andClauses.push(`${field}: ${parsedValue}`);
         } else {
           const op = this.getSequelizeOperator(operator);
-          andClauses.push(`{ ${field}: { [${op}]: ${parsedValue} } }`);
+          andClauses.push(`${field}: { [${op}]: ${parsedValue} }`);
         }
       }
 
       if (andClauses.length === 1) {
-        sql.push(andClauses[0]);
+        sql.push(`{ ${andClauses[0]} }`);
       } else if (andClauses.length > 1) {
-        sql.push(`{ [Op.and]: [${andClauses.join(", ")}] }`);
+        sql.push(
+          `{ [Op.and]: [${andClauses.map((clause) => `{ ${clause} }`).join(", ")}] }`
+        );
       }
     }
 
@@ -375,6 +382,35 @@ export class SequelizeGenerator extends BaseGenerator {
     return selectedColumns.length > 0 ? selectedColumns.join(", ") : null;
   }
 
+  buildOrConditions(where) {
+    const orGroups = where.split(/\s+OR\s+/i).map((group) => group.trim());
+    const orClauses = [];
+
+    for (const group of orGroups) {
+      if (group.includes(" AND ")) {
+        const andConditions = group
+          .split(/\s+AND\s+/i)
+          .map((cond) => cond.trim());
+        const andClauses = andConditions
+          .map((cond) => this.parseCondition(cond))
+          .filter(Boolean);
+
+        if (andClauses.length === 1) {
+          orClauses.push(andClauses[0]);
+        } else if (andClauses.length > 1) {
+          orClauses.push(`{ [Op.and]: [${andClauses.join(", ")}] }`);
+        }
+      } else {
+        const clause = this.parseCondition(group);
+        if (clause) orClauses.push(clause);
+      }
+    }
+
+    return orClauses.length === 1
+      ? orClauses[0]
+      : `{ [Op.or]: [${orClauses.join(", ")}] }`;
+  }
+
   buildGroupBy(groupBy) {
     return groupBy
       .map((col) => {
@@ -425,5 +461,19 @@ export class SequelizeGenerator extends BaseGenerator {
       "<": "Op.lt",
     };
     return opMap[operator] || "Op.eq";
+  }
+
+  parseCondition(condition) {
+    const match = condition.match(
+      /(.+?)(=|!=|>=|<=|>|<)(.+?)(?=\s+(?:AND|OR)|$)/i
+    );
+    if (!match) return null;
+
+    const [, field, operator, value] = match.map((s) => s.trim());
+    const parsedValue = this.parseSequelizeValue(value);
+
+    return operator === "="
+      ? `{ ${field}: ${parsedValue} }`
+      : `{ ${field}: { [${this.getSequelizeOperator(operator)}]: ${parsedValue} } }`;
   }
 }
