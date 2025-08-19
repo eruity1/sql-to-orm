@@ -17,6 +17,7 @@
     "@testing-library/jest-dom": "^6.7.0",
     "@testing-library/react": "^16.3.0",
     "babel-jest": "^30.0.5",
+    "dompurify": "^3.2.6",
     "inflection": "^3.0.2",
     "jest": "^30.0.5",
     "jest-environment-jsdom": "^30.0.5",
