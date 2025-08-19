@@ -3,6 +3,7 @@ import { useState, useCallback } from "react";
 // Components
 import InputSection from "./components/InputSection";
 import OutputSection from "./components/OutputSection";
+import Header from "./components/Header";
 
 // Styles
 import { Flex } from "./styles/components";
@@ -37,6 +38,8 @@ function App() {
       <GlobalStyle />
       <Flex $minHeight="100vh">
         <Flex $maxWidth={80} $padding={1.5} $gap={0.75} $column>
+          <Header />
+          <hr />
           <InputSection sqlInput={sqlInput} setSqlInput={setsqlInput} />
           <OutputSection
             activeTab={activeTab}

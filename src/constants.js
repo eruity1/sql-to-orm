@@ -66,3 +66,51 @@ export const TABS = [
   { id: ORM_MAPPINGS.ACTIVE_RECORD, name: "ActiveRecord", lang: "ruby" },
   { id: ORM_MAPPINGS.SEQUELIZE, name: "Sequelize", lang: "javascript" },
 ];
+
+export const EXAMPLES = [
+  {
+    name: "Select All Users",
+    description: "Basic SELECT query to fetch all users",
+    sql: "SELECT * FROM users",
+  },
+  {
+    name: "Find User by ID",
+    description: "SELECT with WHERE condition",
+    sql: "SELECT * FROM users WHERE id = 1",
+  },
+  {
+    name: "Users with Posts (JOIN)",
+    description: "INNER JOIN to get users with their posts",
+    sql: "SELECT users.name, posts.title FROM users INNER JOIN posts ON users.id = posts.user_id",
+  },
+  {
+    name: "Active Users Subquery",
+    description: "Subquery to find users with recent posts",
+    sql: "SELECT * FROM users WHERE id IN (SELECT user_id FROM posts WHERE created_at > 2023-01-01)",
+  },
+  {
+    name: "Get Recent Posts",
+    description: "SELECT with ORDER BY and LIMIT",
+    sql: "SELECT title, content FROM posts ORDER BY created_at DESC LIMIT 10",
+  },
+  {
+    name: "Create New User",
+    description: "INSERT query to add a new record",
+    sql: "INSERT INTO users (name, email) VALUES ('John Doe', 'john@example.com')",
+  },
+  {
+    name: "Update User Email",
+    description: "UPDATE query with WHERE condition",
+    sql: "UPDATE users SET email = 'newemail@example.com' WHERE id = 1",
+  },
+  {
+    name: "Delete Inactive Users",
+    description: "DELETE query with WHERE condition",
+    sql: "DELETE FROM users WHERE active = false",
+  },
+  {
+    name: "Left Join with Filter",
+    description: "LEFT JOIN with WHERE and ORDER BY",
+    sql: "SELECT users.name, posts.title FROM users LEFT JOIN posts ON users.id = posts.user_id WHERE users.active = true ORDER BY users.name LIMIT 10",
+  },
+];
