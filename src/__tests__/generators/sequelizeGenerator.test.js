@@ -17,7 +17,7 @@ jest.mock("../../constants", () => ({
     SIMPLE_OPERATORS: /(=|!=|>=|<=|>|<)/,
     AGGREGATE_FUNCTION_PATTERN:
       /^(COUNT|SUM|AVG|MIN|MAX)\s*\(\s*(DISTINCT\s+)?([^)]+)\s*\)$/i,
-    SUBQUERY_PATTERN: /\([^)]*SELECT[^)]*\)/gi,
+    SUBQUERY_PATTERN: /\([^()]*\bSELECT\b[^()]*\)/gi,
     VALUE_CLEANUP: /^['"](.*)['"]$|^`(.*)`$|^\s*|\s*$/g,
     NUMBER: /^-?(?:\d+\.?\d*|\.\d+)$/,
   },

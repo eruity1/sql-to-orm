@@ -148,8 +148,76 @@ const getSetClause = (query) => {
 };
 
 const getWhereConditions = (query) => {
-  const whereMatch = query.match(SQL_PATTERNS.WHERE_CLAUSE);
-  return whereMatch ? whereMatch[1].trim() : "";
+  const lowerQuery = query.toLowerCase();
+  const whereIndex = lowerQuery.indexOf("where");
+  if (whereIndex === -1) return "";
+
+  // Start from after "where"
+  let whereClause = query.substring(whereIndex + 5).trim();
+
+  // Track parentheses depth and quotes
+  let depth = 0;
+  let inQuotes = false;
+  let quoteChar = null;
+  let i = 0;
+
+  // Keywords that end the WHERE clause (when not in parentheses)
+  const endKeywords = ["group by", "order by", "having", "limit"];
+
+  while (i < whereClause.length) {
+    const char = whereClause[i];
+
+    // Handle quotes
+    if ((char === "'" || char === '"') && !inQuotes) {
+      inQuotes = true;
+      quoteChar = char;
+    } else if (char === quoteChar && inQuotes) {
+      // Check for escaped quotes
+      let escapeCount = 0;
+      let j = i - 1;
+      while (j >= 0 && whereClause[j] === "\\") {
+        escapeCount++;
+        j--;
+      }
+      if (escapeCount % 2 === 0) {
+        inQuotes = false;
+        quoteChar = null;
+      }
+    }
+
+    // Handle parentheses (only when not in quotes)
+    if (!inQuotes) {
+      if (char === "(") {
+        depth++;
+      } else if (char === ")") {
+        depth--;
+      }
+
+      // Check for end keywords only when depth is 0
+      if (depth === 0) {
+        const remaining = whereClause.substring(i).toLowerCase();
+
+        for (const keyword of endKeywords) {
+          if (
+            remaining.match(
+              new RegExp(`^\\s+${keyword.replace(" ", "\\s+")}\\b`)
+            )
+          ) {
+            return whereClause.substring(0, i).trim();
+          }
+        }
+
+        // Check for semicolon or end of string
+        if (remaining.match(/^\\s*;?\\s*$/)) {
+          return whereClause.substring(0, i).trim();
+        }
+      }
+    }
+
+    i++;
+  }
+
+  return whereClause.trim();
 };
 
 const getGroupBy = (query) => {

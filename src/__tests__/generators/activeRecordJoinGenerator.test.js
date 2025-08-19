@@ -16,8 +16,8 @@ jest.mock("../../constants", () => ({
     SIMPLE_ASSOCIATION_JOIN: /^(\w+)\.(\w+)\s*=\s*(\w+)\.(\w+)$/,
     AGGREGATE_FUNCTION_PATTERN:
       /^(COUNT|SUM|AVG|MIN|MAX)\s*\(\s*(DISTINCT\s+)?([^)]+)\s*\)$/i,
-    SUBQUERY_PATTERN: /\([^)]*SELECT[^)]*\)/gi,
     CONDITION_WITH_LOGICAL: /(.+?)(=|!=|>=|<=|>|<)(.+?)(\s+(?:AND|OR)\s+|$)/gi,
+    DATE_PATTERN: /^\d{4}-\d{2}-\d{2}(\s+\d{2}:\d{2}(:\d{2})?)?$/,
   },
 }));
 jest.mock("inflection");
@@ -32,15 +32,26 @@ describe("ActiveRecordJoinGenerator", () => {
     StringHelpers.toModelName.mockImplementation(
       (table) => table.charAt(0).toUpperCase() + table.slice(1)
     );
+    StringHelpers.hasSubquery.mockImplementation((where) =>
+      /\([^()]*\bSELECT\b[^()]*\)/i.test(where)
+    );
 
     ValueParser.parse.mockImplementation((value) => {
+      if (!value) return "";
+
       if (value.startsWith("'") && value.endsWith("'")) {
         return `"${value.slice(1, -1)}"`;
+      }
+      if (value.startsWith('"') && value.endsWith('"')) {
+        return value;
       }
       if (value.toLowerCase() === "null") return "nil";
       if (value.toLowerCase() === "true") return true;
       if (value.toLowerCase() === "false") return false;
       if (/^-?(?:\d+\.?\d*|\.\d+)$/.test(value)) return Number(value);
+      if (/^\d{4}-\d{2}-\d{2}(\s+\d{2}:\d{2}(:\d{2})?)?$/.test(value)) {
+        return `"${value}"`;
+      }
       return `"${value}"`;
     });
 
@@ -622,36 +633,6 @@ describe("ActiveRecordJoinGenerator", () => {
       const result = generator.buildWhereWithJoins(where, "users", []);
 
       expect(result).toBe('.where("users.age >= ?", 21)');
-    });
-  });
-
-  describe("hasSubquery", () => {
-    test("returns true for subquery", () => {
-      const where = "users.id IN (SELECT user_id FROM posts)";
-      const result = generator.hasSubquery(where);
-
-      expect(result).toBe(true);
-    });
-
-    test("returns false for no subquery", () => {
-      const where = "users.age = 25";
-      const result = generator.hasSubquery(where);
-
-      expect(result).toBe(false);
-    });
-
-    test("returns false for empty input", () => {
-      const where = "";
-      const result = generator.hasSubquery(where);
-
-      expect(result).toBe(false);
-    });
-
-    test("returns false for partial subquery-like string", () => {
-      const where = 'posts.title LIKE "SELECT%"';
-      const result = generator.hasSubquery(where);
-
-      expect(result).toBe(false);
     });
   });
 

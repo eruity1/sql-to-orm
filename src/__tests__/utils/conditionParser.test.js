@@ -10,14 +10,13 @@ jest.mock("../../constants", () => ({
     SIMPLE_PATTERN: /^(\w+(?:\.\w+)?)\s*(=|!=|>=|<=|>|<)\s*(.+)$/,
     LIKE_PATTERN: /(\w+(?:\.\w+)?)\s+(NOT\s+)?LIKE\s+(['"])(.*?)\3/gi,
     ILIKE_PATTERN: /(\w+(?:\.\w+)?)\s+(NOT\s+)?ILIKE\s+(['"])(.*?)\3/gi,
-    IN_PATTERN:
-      /(\w+(?:\.\w+)?)\s+(NOT\s+)?IN\s*\(([^)]*(?:SELECT[^)]*)?[^)]*)\)/gi,
+    IN_PATTERN: /(\w+(?:\.\w+)?)\s+(NOT\s+)?IN\s*\(([^)]+)\)/gi,
     IN_PATTERN_WITH_SUBQUERY:
-      /(\w+(?:\.\w+)?)\s+(NOT\s+)?IN\s*\(([^)]*SELECT[^)]*)\)/gi,
+      /(\w+(?:\.\w+)?)\s+(NOT\s+)?IN\s*\(([^()]*\bSELECT\b[^()]*)\)/gi,
     BETWEEN_PATTERN:
       /(\w+(?:\.\w+)?)\s+(NOT\s+)?BETWEEN\s+(.+?)\s+AND\s+(.+?)(?=\s+(?:AND|OR)|$)/gi,
     NULL_PATTERN: /(\w+(?:\.\w+)?)\s+IS\s+(NOT\s+)?NULL/gi,
-    SUBQUERY_PATTERN: /\([^)]*SELECT[^)]*\)/gi,
+    SUBQUERY_PATTERN: /\([^()]*\bSELECT\b[^()]*\)/gi,
   },
 }));
 

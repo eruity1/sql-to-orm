@@ -18,4 +18,8 @@ export class StringHelpers {
     );
     return where.replace(pattern, " ");
   }
+
+  static hasSubquery(where) {
+    return SQL_PATTERNS.SUBQUERY_PATTERN.test(where);
+  }
 }

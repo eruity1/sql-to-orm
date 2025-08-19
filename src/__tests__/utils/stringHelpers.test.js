@@ -5,6 +5,7 @@ jest.mock("inflection");
 jest.mock("../../constants", () => ({
   SQL_PATTERNS: {
     REMOVE_CLAUSE: /[.*+?^${}()|[\]\\]/g,
+    SUBQUERY_PATTERN: /\([^()]*\bSELECT\b[^()]*\)/gi,
   },
 }));
 
@@ -94,6 +95,36 @@ describe("StringHelpers", () => {
       const result = StringHelpers.removeClause(where, clause);
 
       expect(result).toBe(" active = true");
+    });
+  });
+
+  describe("hasSubquery", () => {
+    test("returns true for subquery", () => {
+      const where = "users.id IN (SELECT user_id FROM posts)";
+      const result = StringHelpers.hasSubquery(where);
+
+      expect(result).toBe(true);
+    });
+
+    test("returns false for no subquery", () => {
+      const where = "users.age = 25";
+      const result = StringHelpers.hasSubquery(where);
+
+      expect(result).toBe(false);
+    });
+
+    test("returns false for empty input", () => {
+      const where = "";
+      const result = StringHelpers.hasSubquery(where);
+
+      expect(result).toBe(false);
+    });
+
+    test("returns false for partial subquery-like string", () => {
+      const where = 'posts.title LIKE "SELECT%"';
+      const result = StringHelpers.hasSubquery(where);
+
+      expect(result).toBe(false);
     });
   });
 });

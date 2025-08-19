@@ -267,7 +267,7 @@ export class ActiveRecordJoinGenerator extends BaseGenerator {
   }
 
   buildWhereWithJoins(where, mainTable, joins) {
-    if (this.hasSubquery(where)) {
+    if (StringHelpers.hasSubquery(where)) {
       return this.buildSubqueryWhere(where);
     }
 
@@ -286,11 +286,26 @@ export class ActiveRecordJoinGenerator extends BaseGenerator {
     return this.buildRawWhereWithJoins(where);
   }
 
-  hasSubquery(where) {
-    return SQL_PATTERNS.SUBQUERY_PATTERN.test(where);
-  }
-
   buildSubqueryWhere(where) {
+    const dates = [];
+    let processedWhere = where;
+
+    const matches = [...where.matchAll(/\b(\d{4}-\d{2}-\d{2})\b/g)];
+
+    for (const match of matches) {
+      const dateValue = match[1];
+      const beforeIndex = Math.max(0, match.index - 1);
+      const beforeChar = where[beforeIndex];
+
+      if (beforeChar !== '"' && beforeChar !== "'") {
+        dates.push(`"${dateValue}"`);
+        processedWhere = processedWhere.replace(dateValue, "?");
+      }
+    }
+
+    if (dates.length > 0) {
+      return `.where("${processedWhere}", ${dates.join(", ")})`;
+    }
     return `.where("${where}")`;
   }
 
@@ -350,12 +365,21 @@ export class ActiveRecordJoinGenerator extends BaseGenerator {
 
     conditions.simple.forEach(({ field, operator, value }) => {
       const fieldRef = field.includes(".") ? field : `${mainTable}.${field}`;
+
+      let processedValue = value;
+      if (
+        typeof value === "string" &&
+        SQL_PATTERNS.DATE_PATTERN.test(value.replace(/['"]/g, ""))
+      ) {
+        processedValue = `"${value.replace(/['"]/g, "")}"`;
+      }
+
       if (operator === "=") {
-        clauses.push(`where("${fieldRef} = ?", ${value})`);
+        clauses.push(`where("${fieldRef} = ?", ${processedValue})`);
       } else if (operator === "!=") {
-        clauses.push(`where.not("${fieldRef} = ?", ${value})`);
+        clauses.push(`where.not("${fieldRef} = ?", ${processedValue})`);
       } else {
-        clauses.push(`where("${fieldRef} ${operator} ?", ${value})`);
+        clauses.push(`where("${fieldRef} ${operator} ?", ${processedValue})`);
       }
     });
 
@@ -370,6 +394,12 @@ export class ActiveRecordJoinGenerator extends BaseGenerator {
     for (const match of matches) {
       const [_, field, operator, val, logical] = match;
       const parsedVal = ValueParser.parse(val.trim());
+
+      const rawVal = val.trim().replace(/['"]/g, "");
+      if (SQL_PATTERNS.DATE_PATTERN.test(rawVal)) {
+        parsedVal = `"${rawVal}"`;
+      }
+
       placeholders.push(parsedVal);
       sql += `${field.trim()} ${operator} ?${logical || ""}`;
     }

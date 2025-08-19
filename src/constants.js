@@ -6,10 +6,9 @@ export const SQL_PATTERNS = {
   WHERE_PATTERN: /(.+?)(=|!=|>=|<=|>|<)(.+?)(\s+(?:AND|OR)\s+|$)/gi,
   LIKE_PATTERN: /(\w+(?:\.\w+)?)\s+(NOT\s+)?LIKE\s+(['"])(.*?)\3/gi,
   ILIKE_PATTERN: /(\w+(?:\.\w+)?)\s+(NOT\s+)?ILIKE\s+(['"])(.*?)\3/gi,
-  IN_PATTERN:
-    /(\w+(?:\.\w+)?)\s+(NOT\s+)?IN\s*\(([^)]*(?:SELECT[^)]*)?[^)]*)\)/gi,
+  IN_PATTERN: /(\w+(?:\.\w+)?)\s+(NOT\s+)?IN\s*\(([^)]+)\)/gi,
   IN_PATTERN_WITH_SUBQUERY:
-    /(\w+(?:\.\w+)?)\s+(NOT\s+)?IN\s*\(([^)]*SELECT[^)]*)\)/gi,
+    /(\w+(?:\.\w+)?)\s+(NOT\s+)?IN\s*\(([^()]*\bSELECT\b[^()]*)\)/gi,
   BETWEEN_PATTERN:
     /(\w+(?:\.\w+)?)\s+(NOT\s+)?BETWEEN\s+(.+?)\s+AND\s+(.+?)(?=\s+(?:AND|OR)|$)/gi,
   NULL_PATTERN: /(\w+(?:\.\w+)?)\s+IS\s+(NOT\s+)?NULL/gi,
@@ -30,6 +29,7 @@ export const SQL_PATTERNS = {
 
   VALUE_CLEANUP: /^['"]|['"]$/g,
   NUMBER: /^-?(?:\d+\.?\d*|\.\d+)$/,
+  DATE_PATTERN: /^\d{4}-\d{2}-\d{2}(\s+\d{2}:\d{2}(:\d{2})?)?$/,
   REMOVE_CLAUSE: /[.*+?^${}()|[\]\\]/g,
 
   SELECT_COLUMNS: /select\s+(.*?)\s+from/i,
@@ -44,7 +44,7 @@ export const SQL_PATTERNS = {
   ORDER_BY_CLAUSE: /order\s+by\s+(.+?)(?=\s+limit|;|$)/i,
   LIMIT_CLAUSE: /limit\s+(\d+)(?:\s+offset\s+(\d+))?/i,
 
-  SUBQUERY_PATTERN: /\([^)]*SELECT[^)]*\)/gi,
+  SUBQUERY_PATTERN: /\([^()]*\bSELECT\b[^()]*\)/i,
 
   AGGREGATE_FUNCTION_PATTERN:
     /^(COUNT|SUM|AVG|MIN|MAX)\s*\(\s*(DISTINCT\s+)?([^)]+)\s*\)$/i,
