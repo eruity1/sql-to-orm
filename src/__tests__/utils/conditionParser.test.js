@@ -32,7 +32,6 @@ describe("ConditionParser", () => {
       return `"${value.replace(/^['"]|['"]$/g, "")}"`;
     });
 
-    // Mock StringHelpers.removeClause
     StringHelpers.removeClause.mockImplementation((where, clause) => {
       const pattern = new RegExp(
         `\\s*(AND|OR)?\\s*${clause.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*(AND|OR)?\\s*`,

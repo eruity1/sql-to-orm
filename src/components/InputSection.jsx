@@ -1,11 +1,17 @@
 import { useState } from "react";
-
 import { ChevronDown, Code2 } from "lucide-react";
+import DOMPurify from "dompurify";
+
 import { Button, Flex, TextArea } from "../styles/components";
 import Examples from "./Examples";
 
 const InputSection = ({ sqlInput, setSqlInput }) => {
   const [showExamples, setShowExamples] = useState(false);
+
+  const sanitizeAndSetInput = (sql) => {
+    const sanitizedSql = DOMPurify.sanitize(sql);
+    setSqlInput(sanitizedSql);
+  };
 
   const showExamplesHandler = () => setShowExamples((prev) => !prev);
 
@@ -19,7 +25,7 @@ const InputSection = ({ sqlInput, setSqlInput }) => {
         <TextArea
           name="SQL Input"
           value={sqlInput}
-          onChange={(e) => setSqlInput(e.target.value)}
+          onChange={(e) => sanitizeAndSetInput(e.target.value)}
           placeholder="Paste your SQL query here..."
           $height={19.75}
           $padding={1}

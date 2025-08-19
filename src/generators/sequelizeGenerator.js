@@ -83,7 +83,6 @@ export class SequelizeGenerator extends BaseGenerator {
     }
 
     const column = columns[0];
-    // FIXED: The column.name might be "COUNT(*)" directly, so we need to match that
     const aggMatch = column.name.match(SQL_PATTERNS.AGGREGATE_FUNCTION_PATTERN);
 
     if (!aggMatch) {

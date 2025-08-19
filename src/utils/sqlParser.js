@@ -152,27 +152,22 @@ const getWhereConditions = (query) => {
   const whereIndex = lowerQuery.indexOf("where");
   if (whereIndex === -1) return "";
 
-  // Start from after "where"
   let whereClause = query.substring(whereIndex + 5).trim();
 
-  // Track parentheses depth and quotes
   let depth = 0;
   let inQuotes = false;
   let quoteChar = null;
   let i = 0;
 
-  // Keywords that end the WHERE clause (when not in parentheses)
   const endKeywords = ["group by", "order by", "having", "limit"];
 
   while (i < whereClause.length) {
     const char = whereClause[i];
 
-    // Handle quotes
     if ((char === "'" || char === '"') && !inQuotes) {
       inQuotes = true;
       quoteChar = char;
     } else if (char === quoteChar && inQuotes) {
-      // Check for escaped quotes
       let escapeCount = 0;
       let j = i - 1;
       while (j >= 0 && whereClause[j] === "\\") {
@@ -185,7 +180,6 @@ const getWhereConditions = (query) => {
       }
     }
 
-    // Handle parentheses (only when not in quotes)
     if (!inQuotes) {
       if (char === "(") {
         depth++;
@@ -193,7 +187,6 @@ const getWhereConditions = (query) => {
         depth--;
       }
 
-      // Check for end keywords only when depth is 0
       if (depth === 0) {
         const remaining = whereClause.substring(i).toLowerCase();
 
@@ -207,7 +200,6 @@ const getWhereConditions = (query) => {
           }
         }
 
-        // Check for semicolon or end of string
         if (remaining.match(/^\\s*;?\\s*$/)) {
           return whereClause.substring(0, i).trim();
         }
@@ -268,7 +260,7 @@ const getLimit = (query) => {
 };
 
 const sqlParser = (sql) => {
-  const trimmedSQL = sql.trim();
+  const trimmedSQL = sql.toString().trim();
   const lowerSQL = trimmedSQL.toLowerCase();
 
   const tables = getTableNames(trimmedSQL);

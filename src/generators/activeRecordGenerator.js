@@ -347,7 +347,7 @@ export class ActiveRecordGenerator extends BaseGenerator {
     const matches = [...where.matchAll(pattern)];
     for (const match of matches) {
       const [_, field, operator, val, logical] = match;
-      const parsedVal = ValueParser.parse(val.trim());
+      let parsedVal = ValueParser.parse(val.trim());
 
       const rawVal = val.trim().replace(/['"]/g, "");
       if (SQL_PATTERNS.DATE_PATTERN.test(rawVal)) {
