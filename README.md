@@ -26,28 +26,24 @@ Try it live at: [Here](https://sqltoorm.netlify.app/)
     ```
     git clone https://github.com/eruity1/sql-to-orm.git
     cd sql-to-orm
-
     ```
 
 2.  Install dependencies:
 
     ```
     npm install
-
     ```
 
 3.  Start the development server:
 
     ```
     npm run dev
-
     ```
 
 ### Building for Production
 
 ```
 npm run build
-
 ```
 
 The static assets will be generated in the `build/` folder (or `dist/` if using Vite).
@@ -56,7 +52,6 @@ The static assets will be generated in the `build/` folder (or `dist/` if using 
 
 ```
 npm test
-
 ```
 
 ## Usage
@@ -84,7 +79,6 @@ Contributions welcome! Please follow these steps:
 
     ```
     git checkout -b your-feature-name
-
     ```
 
 3.  **Make Changes**:
@@ -95,14 +89,12 @@ Contributions welcome! Please follow these steps:
 
     ```
     git commit -m "Add your-feature-name"
-
     ```
 
 5.  **Push to Your Fork**:
 
     ```
     git push origin your-feature-name
-
     ```
 
 6.  **Open a Pull Request**:
