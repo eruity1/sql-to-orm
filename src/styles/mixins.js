@@ -224,9 +224,15 @@ export const position = css`
 `;
 
 export const overflow = css`
-  overflow-y: ${({ $overflow, $overflowAuto, $overflowHidden }) => {
+  overflow-y: ${({
+    $overflow,
+    $overflowAuto,
+    $overflowScroll,
+    $overflowHidden,
+  }) => {
     if ($overflow) return $overflow;
     if ($overflowAuto) return "auto";
+    if ($overflowScroll) return "scroll";
     if ($overflowHidden) return "hidden";
   }};
 `;

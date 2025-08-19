@@ -6,10 +6,9 @@ export const SQL_PATTERNS = {
   WHERE_PATTERN: /(.+?)(=|!=|>=|<=|>|<)(.+?)(\s+(?:AND|OR)\s+|$)/gi,
   LIKE_PATTERN: /(\w+(?:\.\w+)?)\s+(NOT\s+)?LIKE\s+(['"])(.*?)\3/gi,
   ILIKE_PATTERN: /(\w+(?:\.\w+)?)\s+(NOT\s+)?ILIKE\s+(['"])(.*?)\3/gi,
-  IN_PATTERN:
-    /(\w+(?:\.\w+)?)\s+(NOT\s+)?IN\s*\(([^)]*(?:SELECT[^)]*)?[^)]*)\)/gi,
+  IN_PATTERN: /(\w+(?:\.\w+)?)\s+(NOT\s+)?IN\s*\(([^)]+)\)/gi,
   IN_PATTERN_WITH_SUBQUERY:
-    /(\w+(?:\.\w+)?)\s+(NOT\s+)?IN\s*\(([^)]*SELECT[^)]*)\)/gi,
+    /(\w+(?:\.\w+)?)\s+(NOT\s+)?IN\s*\(([^()]*\bSELECT\b[^()]*)\)/gi,
   BETWEEN_PATTERN:
     /(\w+(?:\.\w+)?)\s+(NOT\s+)?BETWEEN\s+(.+?)\s+AND\s+(.+?)(?=\s+(?:AND|OR)|$)/gi,
   NULL_PATTERN: /(\w+(?:\.\w+)?)\s+IS\s+(NOT\s+)?NULL/gi,
@@ -30,6 +29,7 @@ export const SQL_PATTERNS = {
 
   VALUE_CLEANUP: /^['"]|['"]$/g,
   NUMBER: /^-?(?:\d+\.?\d*|\.\d+)$/,
+  DATE_PATTERN: /^\d{4}-\d{2}-\d{2}(\s+\d{2}:\d{2}(:\d{2})?)?$/,
   REMOVE_CLAUSE: /[.*+?^${}()|[\]\\]/g,
 
   SELECT_COLUMNS: /select\s+(.*?)\s+from/i,
@@ -44,7 +44,7 @@ export const SQL_PATTERNS = {
   ORDER_BY_CLAUSE: /order\s+by\s+(.+?)(?=\s+limit|;|$)/i,
   LIMIT_CLAUSE: /limit\s+(\d+)(?:\s+offset\s+(\d+))?/i,
 
-  SUBQUERY_PATTERN: /\([^)]*SELECT[^)]*\)/gi,
+  SUBQUERY_PATTERN: /\([^()]*\bSELECT\b[^()]*\)/i,
 
   AGGREGATE_FUNCTION_PATTERN:
     /^(COUNT|SUM|AVG|MIN|MAX)\s*\(\s*(DISTINCT\s+)?([^)]+)\s*\)$/i,
@@ -65,4 +65,52 @@ export const ORM_MAPPINGS = {
 export const TABS = [
   { id: ORM_MAPPINGS.ACTIVE_RECORD, name: "ActiveRecord", lang: "ruby" },
   { id: ORM_MAPPINGS.SEQUELIZE, name: "Sequelize", lang: "javascript" },
+];
+
+export const EXAMPLES = [
+  {
+    name: "Select All Users",
+    description: "Basic SELECT query to fetch all users",
+    sql: "SELECT * FROM users",
+  },
+  {
+    name: "Find User by ID",
+    description: "SELECT with WHERE condition",
+    sql: "SELECT * FROM users WHERE id = 1",
+  },
+  {
+    name: "Users with Posts (JOIN)",
+    description: "INNER JOIN to get users with their posts",
+    sql: "SELECT users.name, posts.title FROM users INNER JOIN posts ON users.id = posts.user_id",
+  },
+  {
+    name: "Active Users Subquery",
+    description: "Subquery to find users with recent posts",
+    sql: "SELECT * FROM users WHERE id IN (SELECT user_id FROM posts WHERE created_at > 2023-01-01)",
+  },
+  {
+    name: "Get Recent Posts",
+    description: "SELECT with ORDER BY and LIMIT",
+    sql: "SELECT title, content FROM posts ORDER BY created_at DESC LIMIT 10",
+  },
+  {
+    name: "Create New User",
+    description: "INSERT query to add a new record",
+    sql: "INSERT INTO users (name, email) VALUES ('John Doe', 'john@example.com')",
+  },
+  {
+    name: "Update User Email",
+    description: "UPDATE query with WHERE condition",
+    sql: "UPDATE users SET email = 'newemail@example.com' WHERE id = 1",
+  },
+  {
+    name: "Delete Inactive Users",
+    description: "DELETE query with WHERE condition",
+    sql: "DELETE FROM users WHERE active = false",
+  },
+  {
+    name: "Left Join with Filter",
+    description: "LEFT JOIN with WHERE and ORDER BY",
+    sql: "SELECT users.name, posts.title FROM users LEFT JOIN posts ON users.id = posts.user_id WHERE users.active = true ORDER BY users.name LIMIT 10",
+  },
 ];

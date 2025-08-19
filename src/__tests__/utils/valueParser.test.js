@@ -4,6 +4,7 @@ jest.mock("../../constants", () => ({
   SQL_PATTERNS: {
     VALUE_CLEANUP: /^['"]|['"]$/g,
     NUMBER: /^-?(?:\d+\.?\d*|\.\d+)$/,
+    DATE_PATTERN: /^\d{4}-\d{2}-\d{2}(\s+\d{2}:\d{2}(:\d{2})?)?$/,
   },
 }));
 

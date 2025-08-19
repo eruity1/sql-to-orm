@@ -1,27 +1,21 @@
-import { Code2 } from "lucide-react";
-import { Button, Flex, Grid, Text, TextArea } from "../styles/components";
+import { useState } from "react";
 
-const EXAMPLE_QUERIES = [
-  "SELECT * FROM users WHERE name = 'Fred'",
-  "SELECT * FROM users WHERE name = 'Fred' AND age = 25",
-  "SELECT * FROM users WHERE age > 18 AND team = 'nuggets' OR team = 'jazz'",
-  "INSERT INTO users (name, age) VALUES ('Bob', 30)",
-  "UPDATE users SET name = 'Bob', age = 31 WHERE id = 1",
-  "DELETE FROM users WHERE id = 1",
-];
+import { ChevronDown, Code2 } from "lucide-react";
+import { Button, Flex, TextArea } from "../styles/components";
+import Examples from "./Examples";
 
 const InputSection = ({ sqlInput, setSqlInput }) => {
-  return (
-    <Flex $column $gap={1}>
-      <Flex $alignItemsCenter $justifyBetween>
-        <Flex $alignItemsCenter $gap={0.5}>
-          <Code2 size={20} color="#3b82f6" />
-          <Flex $fontSize={1.125} $boldWeight>
-            SQL Query
-          </Flex>
-        </Flex>
-      </Flex>
-      <Flex $column $gap={0.5}>
+  const [showExamples, setShowExamples] = useState(false);
+
+  const showExamplesHandler = () => setShowExamples((prev) => !prev);
+
+  const renderMainContent = () => {
+    if (showExamples) {
+      return (
+        <Examples setSqlInput={setSqlInput} showExamples={setShowExamples} />
+      );
+    } else {
+      return (
         <TextArea
           name="SQL Input"
           value={sqlInput}
@@ -33,27 +27,42 @@ const InputSection = ({ sqlInput, setSqlInput }) => {
           $borderRadius={0.5}
           $fontSize={0.875}
         />
-        <Flex $column $gap={0.5}>
-          <Text $fontSize={0.875} $color="#d1d5db">
-            Try these examples
-          </Text>
-          <Grid $gap={0.5}>
-            {EXAMPLE_QUERIES.map((query, idx) => (
-              <Button
-                key={idx}
-                onClick={() => setSqlInput(query)}
-                $textAlignLeft
-                $fontSize={0.875}
-                $customPadding="0.25rem 0.75rem"
-                $borderRadius={0.5}
-                $backgroundColor="#1f2937"
-                $hoverBackground="#1e3a8a"
-              >
-                {query.length > 80 ? `${query.substring(0, 80)}...` : query}
-              </Button>
-            ))}
-          </Grid>
+      );
+    }
+  };
+
+  return (
+    <Flex $column $gap={1}>
+      <Flex $alignItemsCenter $justifyBetween>
+        <Flex $justifyBetween>
+          <Flex $alignItemsCenter $gap={0.5}>
+            <Code2 size={20} color="#3b82f6" />
+            <Flex $fontSize={1.125} $boldWeight>
+              SQL Query
+            </Flex>
+          </Flex>
+          <Button
+            $color="#3d82f6"
+            $borderRadius={0.25}
+            $padding={0.75}
+            $alignItemsCenter
+            $boldWeight
+            $hoverBackground="#1f2937"
+            onClick={showExamplesHandler}
+          >
+            Examples
+            <ChevronDown
+              style={{
+                paddingLeft: "2px",
+                rotate: showExamples ? "180deg" : "",
+                transition: "rotate 0.25s ease-in-out",
+              }}
+            />
+          </Button>
         </Flex>
+      </Flex>
+      <Flex $column $gap={0.5} $height={20} $overflowScroll>
+        {renderMainContent()}
       </Flex>
     </Flex>
   );

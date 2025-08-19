@@ -217,7 +217,7 @@ export class ActiveRecordGenerator extends BaseGenerator {
   }
 
   buildWhere(where) {
-    if (this.hasSubquery(where)) {
+    if (StringHelpers.hasSubquery(where)) {
       return this.buildSubqueryWhere(where);
     }
 
@@ -234,11 +234,27 @@ export class ActiveRecordGenerator extends BaseGenerator {
     return this.buildRawWhere(where);
   }
 
-  hasSubquery(where) {
-    return SQL_PATTERNS.SUBQUERY_PATTERN.test(where);
-  }
-
   buildSubqueryWhere(where) {
+    const dates = [];
+    let processedWhere = where;
+
+    const matches = [...where.matchAll(/\b(\d{4}-\d{2}-\d{2})\b/g)];
+
+    for (const match of matches) {
+      const dateValue = match[1];
+      const beforeIndex = Math.max(0, match.index - 1);
+      const beforeChar = where[beforeIndex];
+
+      if (beforeChar !== '"' && beforeChar !== "'") {
+        dates.push(`"${dateValue}"`);
+        processedWhere = processedWhere.replace(dateValue, "?");
+      }
+    }
+
+    if (dates.length > 0) {
+      return `.where("${processedWhere}", ${dates.join(", ")})`;
+    }
+
     return `.where("${where}")`;
   }
 
@@ -275,12 +291,20 @@ export class ActiveRecordGenerator extends BaseGenerator {
     });
 
     conditions.simple.forEach(({ field, operator, value }) => {
+      let processedValue = value;
+      if (
+        typeof value === "string" &&
+        SQL_PATTERNS.DATE_PATTERN.test(value.replace(/['"]/g, ""))
+      ) {
+        processedValue = `"${value.replace(/['"]/g, "")}"`;
+      }
+
       if (operator === "=") {
-        clauses.push(`where(${field}: ${value})`);
+        clauses.push(`where(${field}: ${processedValue})`);
       } else if (operator === "!=") {
-        clauses.push(`where.not(${field}: ${value})`);
+        clauses.push(`where.not(${field}: ${processedValue})`);
       } else {
-        clauses.push(`where("${field} ${operator} ?", ${value})`);
+        clauses.push(`where("${field} ${operator} ?", ${processedValue})`);
       }
     });
 
@@ -324,6 +348,12 @@ export class ActiveRecordGenerator extends BaseGenerator {
     for (const match of matches) {
       const [_, field, operator, val, logical] = match;
       const parsedVal = ValueParser.parse(val.trim());
+
+      const rawVal = val.trim().replace(/['"]/g, "");
+      if (SQL_PATTERNS.DATE_PATTERN.test(rawVal)) {
+        parsedVal = `"${rawVal}"`;
+      }
+
       placeholders.push(parsedVal);
       sql += `${field.trim()} ${operator} ?${logical || ""}`;
     }

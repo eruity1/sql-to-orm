@@ -29,6 +29,7 @@ export const Flex = styled.div`
   ${borderRadius}
   ${backgroundColor}
   ${position}
+  ${overflow}
 `;
 
 export const Text = styled.p`
@@ -76,7 +77,10 @@ export const Grid = styled.div`
 
 export const Button = styled.button`
   font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
-  color: #d1d5db;
+  color: ${({ $color }) => {
+    if ($color) return $color;
+    return "#d1d5db";
+  }};
   border: none;
   cursor: pointer;
   transition: background-color 0.2s ease;
@@ -84,10 +88,13 @@ export const Button = styled.button`
   ${position}
   ${textAlign}
   ${fontSize}
+  ${fontWeight}
   ${padding}
+  ${margin}
   ${borderRadius}
   ${backgroundColor}
   ${flex}
+  ${width}
 
   background-color: ${({ $activeBackground }) => {
     if ($activeBackground) return $activeBackground;
@@ -106,4 +113,24 @@ export const Pre = styled.pre`
   ${fontSize}
   ${backgroundColor}
   ${overflow}
+`;
+
+export const Link = styled.a`
+  color: ${({ $color }) => {
+    if ($color) return $color;
+  }};
+  font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+
+  ${fontSize}
+  ${fontWeight}
+  ${padding}
+  ${margin}
+
+  &:hover {
+    color: ${($hoverColor) => {
+      if ($hoverColor) return $hoverColor;
+    }};
+  }
 `;
