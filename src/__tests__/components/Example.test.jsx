@@ -1,3 +1,5 @@
+/* eslint-env jest */
+
 import { render, screen, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import Example from "../../components/Example";
@@ -8,7 +10,6 @@ jest.mock("../../styles/components", () => ({
     $column,
     $gap,
     $backgroundColor,
-    $hoverBackground,
     $borderRadius,
     $padding,
     ...props

@@ -1,3 +1,5 @@
+/* eslint-env jest */
+
 import { ValueParser } from "../../utils/valueParser";
 
 jest.mock("../../constants", () => ({

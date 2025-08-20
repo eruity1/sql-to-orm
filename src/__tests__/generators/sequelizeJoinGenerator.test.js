@@ -1,3 +1,5 @@
+/* eslint-env jest */
+
 import { SequelizeJoinGenerator } from "../../generators/sequelizeJoinGenerator";
 import { StringHelpers } from "../../utils/stringHelpers";
 import { ConditionParser } from "../../utils/conditionParser";

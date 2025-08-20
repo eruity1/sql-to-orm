@@ -1,3 +1,5 @@
+/* eslint-env jest */
+
 import { SequelizeGenerator } from "../../generators/sequelizeGenerator";
 import { BaseGenerator } from "../../generators/baseGenerator";
 import { SequelizeJoinGenerator } from "../../generators/sequelizeJoinGenerator";
@@ -94,7 +96,7 @@ describe("SequelizeGenerator", () => {
       (where, schema = {}) => ({
         like:
           where.match(/(\w+)\s+(NOT\s+)?(I?LIKE)\s+(['"]).*?\4/gi)?.map((m) => {
-            const [, field, not, likeOp, , pattern] = m.match(
+            let [, field, not, likeOp, , pattern] = m.match(
               /(\w+)\s+(NOT\s+)?(I?LIKE)\s+(['"])(.*?)\4/i
             );
             let table = null;
@@ -120,7 +122,7 @@ describe("SequelizeGenerator", () => {
           where
             .match(/(\w+)\s+(NOT\s+)?IN\s*\(([^)]*(?:SELECT[^)]*)?[^)]*)\)/gi)
             ?.map((m) => {
-              const [, field, not, valuesList] = m.match(
+              let [, field, not, valuesList] = m.match(
                 /(\w+)\s+(NOT\s+)?IN\s*\(([^)]+)\)/i
               );
               if (/SELECT/i.test(valuesList)) return null;
@@ -151,7 +153,7 @@ describe("SequelizeGenerator", () => {
               /(\w+)\s+(NOT\s+)?BETWEEN\s+.+?\s+AND\s+.+?(?=\s+(?:AND|OR)|$)/gi
             )
             ?.map((m) => {
-              const [, field, not, start, end] = m.match(
+              let [, field, not, start, end] = m.match(
                 /(\w+)\s+(NOT\s+)?BETWEEN\s+(.+?)\s+AND\s+(.+?)(?=\s+(?:AND|OR)|$)/i
               );
               let table = null;
@@ -175,7 +177,7 @@ describe("SequelizeGenerator", () => {
             }) || [],
         null:
           where.match(/(\w+)\s+IS\s+(NOT\s+)?NULL/gi)?.map((m) => {
-            const [, field, not] = m.match(/(\w+)\s+IS\s+(NOT\s+)?NULL/i);
+            let [, field, not] = m.match(/(\w+)\s+IS\s+(NOT\s+)?NULL/i);
             let table = null;
             let fieldName = field;
             if (!field.includes(".")) {

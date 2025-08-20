@@ -1,3 +1,5 @@
+/* eslint-env jest */
+
 import { singularize } from "inflection";
 import { StringHelpers } from "../../utils/stringHelpers";
 

@@ -129,7 +129,7 @@ export class ActiveRecordGenerator extends BaseGenerator {
           return query + `.count(${columnSymbol})`;
         }
 
-      case "SUM":
+      case "SUM": {
         const sumColumn = cleanColumn.includes(".")
           ? `"${cleanColumn}"`
           : `:${cleanColumn}`;
@@ -137,24 +137,28 @@ export class ActiveRecordGenerator extends BaseGenerator {
           query +
           (distinct ? `.distinct.sum(${sumColumn})` : `.sum(${sumColumn})`)
         );
+      }
 
-      case "AVG":
+      case "AVG": {
         const avgColumn = cleanColumn.includes(".")
           ? `"${cleanColumn}"`
           : `:${cleanColumn}`;
         return query + `.average(${avgColumn})`;
+      }
 
-      case "MIN":
+      case "MIN": {
         const minColumn = cleanColumn.includes(".")
           ? `"${cleanColumn}"`
           : `:${cleanColumn}`;
         return query + `.minimum(${minColumn})`;
+      }
 
-      case "MAX":
+      case "MAX": {
         const maxColumn = cleanColumn.includes(".")
           ? `"${cleanColumn}"`
           : `:${cleanColumn}`;
         return query + `.maximum(${maxColumn})`;
+      }
 
       default:
         return null;
