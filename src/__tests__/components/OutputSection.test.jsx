@@ -1,3 +1,5 @@
+/* eslint-env jest */
+
 import { render, screen, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import OutputSection from "../../components/OutputSection";
@@ -70,7 +72,6 @@ jest.mock("../../styles/components", () => ({
     $fontSize,
     $mediumWeight,
     $backgroundColor,
-    $hoverBackground,
     $activeBackground,
     $positionAbsolute,
     $top,

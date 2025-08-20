@@ -1,3 +1,5 @@
+/* eslint-env jest */
+
 import sqlParser from "../../utils/sqlParser";
 
 describe("sqlParser", () => {

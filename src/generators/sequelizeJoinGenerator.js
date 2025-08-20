@@ -131,10 +131,11 @@ export class SequelizeJoinGenerator extends BaseGenerator {
       case "SUM":
       case "AVG":
       case "MIN":
-      case "MAX":
+      case "MAX": {
         const columnRef = `"${cleanColumn}"`;
         const method = funcUpper.toLowerCase();
         return `${modelName}.${method}(${columnRef}${optionsStr ? `, ${optionsStr}` : ""})`;
+      }
 
       default:
         return null;

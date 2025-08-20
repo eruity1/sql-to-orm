@@ -18,16 +18,16 @@ export class BaseGenerator {
     }
   }
 
-  generateSelect(_) {
+  generateSelect() {
     throw new Error("Must implement generateSelect");
   }
-  generateInsert(_) {
+  generateInsert() {
     throw new Error("Must implement generateInsert");
   }
-  generateUpdate(_) {
+  generateUpdate() {
     throw new Error("Must implement generateUpdate");
   }
-  generateDelete(_) {
+  generateDelete() {
     throw new Error("Must implement generateDelete");
   }
   getUnsupportedMessage() {

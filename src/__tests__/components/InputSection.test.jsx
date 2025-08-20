@@ -1,3 +1,5 @@
+/* eslint-env jest */
+
 import { render, screen, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import InputSection from "../../components/InputSection";
@@ -66,7 +68,6 @@ jest.mock("../../styles/components", () => ({
     $borderRadius,
     $fontSize,
     $boldWeight,
-    $backgroundColor,
     $hoverBackground,
     ...props
   }) => (
@@ -93,7 +94,6 @@ jest.mock("../../styles/components", () => ({
     placeholder,
     $height,
     $padding,
-    $backgroundColor,
     $borderRadius,
     $fontSize,
     ...props

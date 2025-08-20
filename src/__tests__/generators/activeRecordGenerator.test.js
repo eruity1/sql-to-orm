@@ -1,3 +1,5 @@
+/* eslint-env jest */
+
 import { ActiveRecordGenerator } from "../../generators/activeRecordGenerator";
 import { BaseGenerator } from "../../generators/baseGenerator";
 import { ActiveRecordJoinGenerator } from "../../generators/activeRecordJoinGenerator";

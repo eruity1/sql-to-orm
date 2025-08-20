@@ -24,14 +24,16 @@ function App() {
 
     const parsedQuery = sqlParser(sqlInput);
     switch (activeTab) {
-      case ORM_MAPPINGS.ACTIVE_RECORD:
+      case ORM_MAPPINGS.ACTIVE_RECORD: {
         const activeRecordGenerator = new ActiveRecordGenerator();
         return activeRecordGenerator.generateQuery(parsedQuery);
-      case ORM_MAPPINGS.SEQUELIZE:
+      }
+      case ORM_MAPPINGS.SEQUELIZE: {
         const sequelizeGenerator = new SequelizeGenerator();
         return sequelizeGenerator.generateQuery(parsedQuery);
+      }
     }
-  });
+  }, [sqlInput, activeTab]);
 
   return (
     <>

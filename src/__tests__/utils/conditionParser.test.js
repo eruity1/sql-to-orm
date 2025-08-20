@@ -1,3 +1,5 @@
+/* eslint-env jest */
+
 import { ConditionParser } from "../../utils/conditionParser";
 import { StringHelpers } from "../../utils/stringHelpers";
 import { ValueParser } from "../../utils/valueParser";

@@ -1,3 +1,5 @@
+/* eslint-env jest */
+
 import { ActiveRecordJoinGenerator } from "../../generators/activeRecordJoinGenerator";
 import { StringHelpers } from "../../utils/stringHelpers";
 import { ValueParser } from "../../utils/valueParser";
