@@ -827,4 +827,41 @@ describe("ActiveRecordGenerator", () => {
       expect(result).toBe(".limit(10)");
     });
   });
+
+  describe("buildCTEs", () => {
+    test("builds CTE with clause", () => {
+      const ctes = [
+        {
+          name: "dept_avg",
+          query:
+            "SELECT department, AVG(salary) FROM employees GROUP BY department",
+        },
+      ];
+      const result = generator.buildCTEs(ctes);
+      expect(result).toContain(".with(");
+      expect(result).toContain("dept_avg");
+    });
+  });
+
+  describe("buildWindowFunctions", () => {
+    test("builds window function select", () => {
+      const windowFunctions = [
+        { function: "ROW_NUMBER", over: "ORDER BY salary DESC" },
+      ];
+      const result = generator.buildWindowFunctions(windowFunctions);
+      expect(result).toContain("ROW_NUMBER");
+      expect(result).toContain(".over(");
+    });
+  });
+
+  describe("buildCaseStatements", () => {
+    test("builds CASE statement select", () => {
+      const caseStatements = [
+        { expression: "CASE WHEN salary > 100000 THEN 'High' ELSE 'Low' END" },
+      ];
+      const result = generator.buildCaseStatements(caseStatements);
+      expect(result).toContain("CASE");
+      expect(result).toContain("WHEN");
+    });
+  });
 });
