@@ -69,6 +69,7 @@ jest.mock("../../styles/components", () => ({
     $fontSize,
     $boldWeight,
     $hoverBackground,
+    $backgroundColor,
     ...props
   }) => (
     <button
@@ -96,6 +97,7 @@ jest.mock("../../styles/components", () => ({
     $padding,
     $borderRadius,
     $fontSize,
+    $backgroundColor,
     ...props
   }) => (
     <textarea

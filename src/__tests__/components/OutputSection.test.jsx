@@ -43,6 +43,14 @@ jest.mock("../../styles/components", () => ({
     $backgroundColor,
     $borderRadius,
     $padding,
+    $hoverBackground,
+    $flex,
+    $customPadding,
+    $activeBackground,
+    $top,
+    $right,
+    $height,
+    $color,
     ...props
   }) => (
     <div
@@ -79,6 +87,7 @@ jest.mock("../../styles/components", () => ({
     $padding,
     $alignItemsCenter,
     $justifyCenter,
+    $hoverBackground,
     ...props
   }) => (
     <button
