@@ -12,6 +12,7 @@ jest.mock("../../styles/components", () => ({
     $backgroundColor,
     $borderRadius,
     $padding,
+    $hoverBackground,
     ...props
   }) => (
     <div

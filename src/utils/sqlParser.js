@@ -259,6 +259,120 @@ const getLimit = (query) => {
   };
 };
 
+const getCTEs = (query) => {
+  const ctes = [];
+  const lowerQuery = query.toLowerCase();
+
+  if (!lowerQuery.includes("with ")) return ctes;
+
+  const withRegex = /with\s+([a-zA-Z_][a-zA-Z0-9_]*)\s+as\s*\(/gi;
+  let match;
+
+  while ((match = withRegex.exec(query)) !== null) {
+    const startPos = match.index + match[0].length - 1;
+    let parenCount = 1;
+    let endPos = startPos;
+
+    for (let i = startPos + 1; i < query.length; i++) {
+      if (query[i] === "(") {
+        parenCount++;
+      } else if (query[i] === ")") {
+        parenCount--;
+        if (parenCount === 0) {
+          endPos = i;
+          break;
+        }
+      }
+    }
+
+    if (endPos > startPos) {
+      const name = match[1].trim();
+      const subquery = query.substring(startPos + 1, endPos).trim();
+
+      ctes.push({
+        name: name,
+        query: subquery,
+      });
+    }
+
+    if (withRegex.lastIndex === match.index) {
+      withRegex.lastIndex++;
+    }
+  }
+
+  return ctes;
+};
+
+function getWindowFunctions(query) {
+  const windowFunctions = [];
+  const lowerQuery = query.toLowerCase();
+
+  if (!lowerQuery.includes("over")) return windowFunctions;
+
+  let match;
+
+  while ((match = SQL_PATTERNS.WINDOW_FUNCTION_PATTERN.exec(query)) !== null) {
+    windowFunctions.push({
+      function: match[1].trim(),
+      over: match[2].trim(),
+    });
+
+    if (SQL_PATTERNS.WINDOW_FUNCTION_PATTERN.lastIndex === match.index) {
+      SQL_PATTERNS.WINDOW_FUNCTION_PATTERN.lastIndex++;
+    }
+  }
+
+  return windowFunctions;
+}
+
+const getSetOperations = (query) => {
+  const setOperations = [];
+  const lowerQuery = query.toLowerCase();
+
+  if (lowerQuery.includes("union")) {
+    SQL_PATTERNS.UNION_PATTERN.lastIndex = 0;
+    let match;
+    while ((match = SQL_PATTERNS.UNION_PATTERN.exec(query)) !== null) {
+      setOperations.push({ type: "UNION", all: match[0].includes("ALL") });
+    }
+  }
+
+  if (lowerQuery.includes("intersect")) {
+    SQL_PATTERNS.INTERSECT_PATTERN.lastIndex = 0;
+    let match;
+    while ((match = SQL_PATTERNS.INTERSECT_PATTERN.exec(query)) !== null) {
+      setOperations.push({ type: "INTERSECT" });
+    }
+  }
+
+  if (lowerQuery.includes("except") || lowerQuery.includes("minus")) {
+    SQL_PATTERNS.EXCEPT_PATTERN.lastIndex = 0;
+    let match;
+    while ((match = SQL_PATTERNS.EXCEPT_PATTERN.exec(query)) !== null) {
+      setOperations.push({ type: "EXCEPT" });
+    }
+  }
+
+  return setOperations;
+};
+
+const getCaseStatements = (query) => {
+  const caseStatements = [];
+  const lowerQuery = query.toLowerCase();
+
+  if (!lowerQuery.includes("case ")) return caseStatements;
+
+  SQL_PATTERNS.CASE_PATTERN.lastIndex = 0;
+  let match;
+  while ((match = SQL_PATTERNS.CASE_PATTERN.exec(query)) !== null) {
+    caseStatements.push({
+      expression: match[0].trim(),
+    });
+  }
+
+  return caseStatements;
+};
+
 const sqlParser = (sql) => {
   const trimmedSQL = sql.toString().trim();
   const lowerSQL = trimmedSQL.toLowerCase();
@@ -273,12 +387,23 @@ const sqlParser = (sql) => {
   const having = getHaving(trimmedSQL);
   const orderBy = getOrderBy(trimmedSQL);
   const limit = getLimit(trimmedSQL);
+  const ctes = getCTEs(trimmedSQL);
+  const windowFunctions = getWindowFunctions(trimmedSQL);
+  const setOperations = getSetOperations(trimmedSQL);
+  const caseStatements = getCaseStatements(trimmedSQL);
 
   let queryType = "UNKNOWN";
   if (lowerSQL.startsWith("select")) queryType = "SELECT";
   else if (lowerSQL.startsWith("insert")) queryType = "INSERT";
   else if (lowerSQL.startsWith("update")) queryType = "UPDATE";
   else if (lowerSQL.startsWith("delete")) queryType = "DELETE";
+  else if (lowerSQL.startsWith("with")) {
+    const afterWith = trimmedSQL.slice(lowerSQL.indexOf("with") + 4);
+    const match = afterWith.match(/\)\s*(select|insert|update|delete)/i);
+    if (match) {
+      queryType = match[1].toUpperCase();
+    }
+  }
 
   return {
     type: queryType,
@@ -292,6 +417,10 @@ const sqlParser = (sql) => {
     having,
     orderBy,
     limit,
+    ctes,
+    windowFunctions,
+    setOperations,
+    caseStatements,
     mainTable: tables[0]?.name || "table",
   };
 };

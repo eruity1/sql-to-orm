@@ -574,6 +574,46 @@ describe("SequelizeGenerator", () => {
     });
   });
 
+  describe("buildCTEs", () => {
+    test("builds CTE clause", () => {
+      const ctes = [
+        {
+          name: "dept_avg",
+          query:
+            "SELECT department, AVG(salary) FROM employees GROUP BY department",
+        },
+      ];
+      const result = generator.buildCTEs(ctes);
+      expect(result).toContain("WITH dept_avg AS");
+    });
+  });
+
+  describe("buildWindowFunctions", () => {
+    test("builds window function attributes", () => {
+      const windowFunctions = [
+        { function: "ROW_NUMBER", over: "ORDER BY salary DESC" },
+      ];
+      const result = generator.buildWindowFunctions(
+        windowFunctions,
+        [],
+        "employees"
+      );
+      expect(result).toContain("ROW_NUMBER");
+      expect(result).toContain("OVER");
+    });
+  });
+
+  describe("buildCaseStatements", () => {
+    test("builds CASE statement attributes", () => {
+      const caseStatements = [
+        { expression: "CASE WHEN salary > 100000 THEN 'High' ELSE 'Low' END" },
+      ];
+      const result = generator.buildCaseStatements(caseStatements);
+      expect(result).toContain("CASE");
+      expect(result).toContain("WHEN");
+    });
+  });
+
   describe("parseSequelizeValue", () => {
     test("parses string value", () => {
       const result = generator.parseSequelizeValue("John");

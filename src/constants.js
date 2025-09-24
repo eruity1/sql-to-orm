@@ -48,6 +48,16 @@ export const SQL_PATTERNS = {
 
   AGGREGATE_FUNCTION_PATTERN:
     /^(COUNT|SUM|AVG|MIN|MAX)\s*\(\s*(DISTINCT\s+)?([^)]+)\s*\)$/i,
+
+  WITH_PATTERN: /with\s+([a-zA-Z_][a-zA-Z0-9_]*)\s+as\s*\(([\s\S]*?)\)/gi,
+  WINDOW_FUNCTION_PATTERN:
+    /\b(ROW_NUMBER|RANK|DENSE_RANK|NTILE|LAG|LEAD|FIRST_VALUE|LAST_VALUE)\s*\(\s*\)\s*OVER\s*\(\s*([^)]*?)\s*\)/gi,
+  CASE_PATTERN:
+    /CASE\s+(?:WHEN\s+(.+?)\s+THEN\s+(.+?))+\s*(?:ELSE\s+(.+?))?\s*END/gi,
+  UNION_PATTERN: /\bUNION(?:\s+ALL)?\b/gi,
+  INTERSECT_PATTERN: /\bINTERSECT\b/gi,
+  EXCEPT_PATTERN: /\b(EXCEPT|MINUS)\b/gi,
+  PARTITION_BY_PATTERN: /PARTITION\s+BY\s+(.+?)(?=\s+ORDER\s+BY|\))/gi,
 };
 
 export const QUERY_TYPES = {

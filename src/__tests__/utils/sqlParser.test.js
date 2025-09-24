@@ -22,6 +22,10 @@ describe("sqlParser", () => {
       orderBy: null,
       limit: null,
       mainTable: "users",
+      ctes: [],
+      windowFunctions: [],
+      setOperations: [],
+      caseStatements: [],
     });
   });
 
@@ -104,6 +108,48 @@ describe("sqlParser", () => {
       { name: "name", table: null, alias: "full_name" },
       { name: "email", table: null, alias: "user_email" },
     ]);
+  });
+
+  test("parses WITH (CTE) clause", () => {
+    const sql =
+      "WITH dept_avg AS (SELECT department, AVG(salary) as avg_salary FROM employees GROUP BY department) SELECT * FROM dept_avg";
+    const result = sqlParser(sql);
+    expect(result.type).toBe("SELECT");
+    expect(result.ctes).toEqual([
+      {
+        name: "dept_avg",
+        query:
+          "SELECT department, AVG(salary) as avg_salary FROM employees GROUP BY department",
+      },
+    ]);
+  });
+
+  test("parses ROW_NUMBER window function", () => {
+    const sql =
+      "SELECT name, salary, ROW_NUMBER() OVER (ORDER BY salary DESC) as rank FROM employees";
+    const result = sqlParser(sql);
+    expect(result.type).toBe("SELECT");
+    expect(result.windowFunctions).toEqual([
+      {
+        function: "ROW_NUMBER",
+        over: "ORDER BY salary DESC",
+      },
+    ]);
+  });
+
+  test("parses CASE statement", () => {
+    const sql =
+      "SELECT name, CASE WHEN salary > 100000 THEN 'High' WHEN salary > 50000 THEN 'Medium' ELSE 'Low' END as salary_tier FROM employees";
+    const result = sqlParser(sql);
+    expect(result.type).toBe("SELECT");
+    expect(result.caseStatements).toHaveLength(1);
+  });
+
+  test("parses UNION operation", () => {
+    const sql = "SELECT name FROM employees UNION SELECT name FROM contractors";
+    const result = sqlParser(sql);
+    expect(result.type).toBe("SELECT");
+    expect(result.setOperations).toEqual([{ type: "UNION", all: false }]);
   });
 
   test("handles empty WHERE", () => {

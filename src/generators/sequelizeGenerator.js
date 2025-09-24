@@ -16,9 +16,24 @@ export class SequelizeGenerator extends BaseGenerator {
   }
 
   generateSelect(parsed) {
-    const { columns, where, mainTable, groupBy, having, orderBy, limit } =
-      parsed;
+    const {
+      columns,
+      where,
+      mainTable,
+      groupBy,
+      having,
+      orderBy,
+      limit,
+      ctes,
+      windowFunctions,
+      setOperations,
+      caseStatements,
+    } = parsed;
     const modelName = StringHelpers.toModelName(mainTable);
+
+    if (setOperations && setOperations.length > 0) {
+      return this.buildSetOperations(setOperations, parsed);
+    }
 
     const simpleAggregateResult = this.handleSimpleAggregates(
       columns,
@@ -63,6 +78,35 @@ export class SequelizeGenerator extends BaseGenerator {
     if (limit) {
       const limitClause = this.buildLimit(limit);
       options.push(limitClause);
+    }
+
+    if (ctes && ctes.length > 0) {
+      const cteClause = this.buildCTEs(ctes);
+      if (cteClause) {
+        query = cteClause + query;
+      }
+    }
+
+    if (windowFunctions && windowFunctions.length > 0) {
+      const windowClause = this.buildWindowFunctions(
+        windowFunctions,
+        columns,
+        mainTable
+      );
+      if (windowClause) {
+        if (!options.includes(`attributes: [${windowClause}]`)) {
+          options.unshift(`attributes: [${windowClause}]`);
+        }
+      }
+    }
+
+    if (caseStatements && caseStatements.length > 0) {
+      const caseClause = this.buildCaseStatements(caseStatements);
+      if (caseClause) {
+        if (!options.some((opt) => opt.includes("attributes"))) {
+          options.unchift(`attributes: [${caseClause}]`);
+        }
+      }
     }
 
     query += options.join(", ") + "})";
@@ -435,6 +479,44 @@ export class SequelizeGenerator extends BaseGenerator {
       return `limit: ${limit.count}, offset: ${limit.offset}`;
     }
     return `limit: ${limit.count}`;
+  }
+
+  buildCTEs(ctes) {
+    if (!ctes || ctes.length === 0) return null;
+
+    const cteQueries = ctes
+      .map((cte) => `WITH ${cte.name} AS (${cte.query})`)
+      .join(", ");
+
+    return `Sequelize.literal(\`${cteQueries}\`), `;
+  }
+
+  buildWindowFunctions(windowFunctions, columns, mainTable) {
+    if (!windowFunctions || windowFunctions.length === 0) return null;
+
+    const windowAttrs = windowFunctions.map((wf, index) => {
+      const attrName = `window_func_${index}`;
+      return `Sequelize.fn('${wf.function}', Sequelize.literal('OVER (${wf.over})')). '${attrName}'`;
+    });
+
+    return windowAttrs.join(", ");
+  }
+
+  buildSetOperations(setOperations, parsed) {
+    if (!setOperations || setOperations.length === 0) return null;
+
+    return `// Set operations not fully supported in Sequelize ORM\n// Consider using raw SQL or multiple queries\nSequelize.query(\`${parsed.originalQuery}\`, { type: Sequelize.QueryTypes.SELECT })`;
+  }
+
+  buildCaseStatements(caseStatements) {
+    if (!caseStatements || caseStatements.length === 0) return null;
+
+    const caseAttrs = caseStatements.map((cs, index) => {
+      const attrName = `case_stmt_${index}`;
+      return `Sequelize.literal(\`${cs.expression}\`), '${attrName}'`;
+    });
+
+    return caseAttrs.join(", ");
   }
 
   parseSequelizeValue(val) {
