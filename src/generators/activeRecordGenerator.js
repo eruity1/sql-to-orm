@@ -18,10 +18,24 @@ export class ActiveRecordGenerator extends BaseGenerator {
   }
 
   generateSelect(parsed) {
-    const { columns, where, mainTable, groupBy, having, orderBy, limit } =
-      parsed;
-
+    const {
+      columns,
+      where,
+      mainTable,
+      groupBy,
+      having,
+      orderBy,
+      limit,
+      ctes,
+      windowFunctions,
+      setOperations,
+      caseStatements,
+    } = parsed;
     const modelName = StringHelpers.toModelName(mainTable);
+
+    if (setOperations && setOperations.length > 0) {
+      return this.buildSetOperations(setOperations, parsed);
+    }
 
     const simpleAggregateResult = this.handleSimpleAggregates(
       columns,
@@ -45,6 +59,10 @@ export class ActiveRecordGenerator extends BaseGenerator {
       !having &&
       (!orderBy || orderBy.length === 0) &&
       !limit;
+
+    if (ctes && ctes.length > 0) {
+      query += this.buildCTEs(ctes);
+    }
 
     if (where) {
       query += this.buildWhere(where);
@@ -70,6 +88,14 @@ export class ActiveRecordGenerator extends BaseGenerator {
       query += this.buildSelect(columns, mainTable);
     } else if (isSelectAll && hasNoConditions) {
       query += ".all";
+    }
+
+    if (windowFunctions && windowFunctions.length > 0) {
+      query += this.buildWindowFunctions(windowFunctions);
+    }
+
+    if (caseStatements && caseStatements.length > 0) {
+      query += this.buildCaseStatements(caseStatements);
     }
 
     return query;
@@ -420,5 +446,56 @@ export class ActiveRecordGenerator extends BaseGenerator {
       return `.limit(${limit.count}).offset(${limit.offset})`;
     }
     return `.limit(${limit.count})`;
+  }
+
+  buildCTEs(ctes) {
+    if (!ctes || ctes.length === 0) return "";
+
+    const cteQueries = ctes.map(
+      (cte) =>
+        `${cte.name}_cte = Arel::Table.new(:${cte.name}).project(Arel.sql("${cte.query}"))`
+    );
+
+    return `.with(${cteQueries.join(", ")})`;
+  }
+
+  buildWindowFunctions(windowFunctions) {
+    if (!windowFunctions || windowFunctions === 0) return "";
+
+    const windowQueries = windowFunctions.map(
+      (wf) =>
+        `.select(Arel::Nodes::NamedFunction.new('${wf.function}', []).over(Arel::Nodes::Window.new(Arel.sql('${wf.over}'))))`
+    );
+
+    return windowQueries.join("");
+  }
+
+  buildSetOperations(setOperations, parsed) {
+    if (!setOperations || setOperations.length === 0) return "";
+
+    const operations = setOperations.map((op) => {
+      switch (op.type) {
+        case "UNION":
+          return op.all ? ".union(:all)" : ".union";
+        case "INTERSECT":
+          return ".interesect";
+        case "EXCEPT":
+          return ".except";
+        default:
+          return "";
+      }
+    });
+
+    return operations.join("");
+  }
+
+  buildCaseStatements(caseStatements) {
+    if (!caseStatements || caseStatements.length === 0) return "";
+
+    const caseQueries = caseStatements.map(
+      (cs) => `.select(Arel.sql("${cs.expression}"))`
+    );
+
+    return caseQueries.join("");
   }
 }
